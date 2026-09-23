@@ -4,7 +4,7 @@
     <string name="tab_home">Home</string>
     <string name="tab_stats">Stats</string>
     <string name="tab_settings">Settings</string>
-    <string name="points_today">Points today</string>
+    <string name="points_today">Total points</string>
     <string name="points_rule">Switch to something else when a timer ends: earn 1 point per 10 minutes. Keep doing the same thing and the same amount is subtracted.</string>
     <string name="section_tags">Tags</string>
     <string name="section_duration">Duration</string>
@@ -19,7 +19,7 @@
     <string name="state_idle">Nothing is being timed. Start the next countdown.</string>
     <string name="duration_m">%1$d min</string>
     <string name="duration_hm">%1$d h %2$d min</string>
-    <string name="duration_early">%1$s · ended early</string>
+    <string name="duration_early">%1$s*</string>
     <string name="tag_study">Study</string>
     <string name="tag_work">Work</string>
     <string name="tag_daily">Daily</string>
@@ -84,4 +84,8 @@
     <string name="channel_ongoing">Countdown</string>
     <string name="channel_ring">Time-up alerts</string>
     <string name="channel_nudge">Gap reminders</string>
+    <string name="data_management">Data</string>
+    <string name="export_all_data">Export all data</string>
+    <string name="export_success">Data exported</string>
+    <string name="export_error">Export failed</string>
 </resources>

@@ -6,6 +6,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.nextick.app.BuildConfig
@@ -18,10 +20,35 @@ import com.nextick.app.core.UpdateChecker
 import com.nextick.app.data.Store
 import com.nextick.app.databinding.FragmentSettingsBinding
 import com.nextick.app.service.TimerService
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
+
+    private val exportLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.CreateDocument("application/json")
+        ) { uri ->
+            val ctx = context ?: return@registerForActivityResult
+            if (uri == null) return@registerForActivityResult
+
+            runCatching {
+                val output = ctx.contentResolver.openOutputStream(uri)
+                    ?: error("Cannot open export file")
+                output.bufferedWriter(Charsets.UTF_8).use { writer ->
+                    writer.write(Store.exportAllJson(BuildConfig.VERSION_NAME))
+                }
+            }.onSuccess {
+                Notifier.confirm(ctx)
+                Toast.makeText(ctx, R.string.export_success, Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Notifier.warning(ctx)
+                Toast.makeText(ctx, R.string.export_error, Toast.LENGTH_SHORT).show()
+            }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -131,6 +158,13 @@ class SettingsFragment : Fragment() {
                 updateIntervalButtons()
                 AlarmPlanner.planNext(ctx)
             }
+        }
+
+        binding.btnExportData.setOnClickListener {
+            Notifier.tap(ctx)
+            val stamp = SimpleDateFormat("yyyy-MM-dd_HHmm", Locale.US)
+                .format(Date())
+            exportLauncher.launch("NextTick-backup-$stamp.json")
         }
 
         binding.btnCheckUpdate.setOnClickListener {

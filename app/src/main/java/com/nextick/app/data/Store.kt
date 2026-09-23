@@ -60,18 +60,22 @@ object Store {
 
     private fun writeTags(list: List<Tag>) {
         val arr = JSONArray()
-        list.forEach { t ->
-            arr.put(JSONObject().apply {
-                put("id", t.id)
-                put("name", t.name)
-                put("key", t.nameKey ?: "")
-                put("color", t.color)
-            })
+        list.forEach { tag ->
+            arr.put(tagToJson(tag))
         }
         sp.edit().putString(KEY_TAGS, arr.toString()).apply()
     }
 
-    private fun defaultDurations(): List<Int> = listOf(5, 10, 15, 20, 25, 30, 40)
+    private fun tagToJson(tag: Tag): JSONObject =
+        JSONObject().apply {
+            put("id", tag.id)
+            put("name", tag.name)
+            put("key", tag.nameKey ?: "")
+            put("color", tag.color)
+        }
+
+    private fun defaultDurations(): List<Int> =
+        listOf(5, 10, 15, 20, 25, 30, 40)
 
     fun durations(): List<Int> {
         val raw = sp.getString(KEY_DURATIONS, null) ?: return defaultDurations()
@@ -97,7 +101,7 @@ object Store {
         val out = ArrayList<Session>()
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
-            val s = Session(
+            val session = Session(
                 id = o.optString("id"),
                 tagId = o.optString("tagId"),
                 tagKey = o.optString("tagKey", o.optString("key")).ifEmpty { null },
@@ -109,61 +113,78 @@ object Store {
                 completed = o.optBoolean("completed")
             )
             if (o.optBoolean("scored", false)) {
-                s.points = o.optDouble("points", 0.0)
-                s.switched = o.optBoolean("switched", false)
+                session.points = o.optDouble("points", 0.0)
+                session.switched = o.optBoolean("switched", false)
             }
-            out.add(s)
+            out.add(session)
         }
         return out
     }
 
-    fun addSession(s: Session) {
+    fun addSession(session: Session) {
         val list = sessions()
-        list.add(s)
+        list.add(session)
         writeSessions(list)
     }
 
     fun settle(id: String, points: Double, switched: Boolean) {
         val list = sessions()
-        val i = list.indexOfFirst { it.id == id }
-        if (i >= 0) {
-            list[i].points = points
-            list[i].switched = switched
+        val index = list.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            list[index].points = points
+            list[index].switched = switched
             writeSessions(list)
         }
     }
 
-    fun lastUnsettled(): Session? = sessions().lastOrNull { it.points == null }
+    fun lastUnsettled(): Session? =
+        sessions().lastOrNull { it.points == null }
 
     fun sessionsOfDay(day: String): List<Session> =
         sessions().filter { dayOf(it.endAt) == day }
 
     private fun writeSessions(list: List<Session>) {
         val arr = JSONArray()
-        list.forEach { s ->
-            arr.put(JSONObject().apply {
-                put("id", s.id)
-                put("tagId", s.tagId)
-                put("tagKey", s.tagKey ?: "")
-                put("tagName", s.tagName)
-                put("tagColor", s.tagColor)
-                put("planned", s.plannedMinutes)
-                put("start", s.startAt)
-                put("end", s.endAt)
-                put("completed", s.completed)
-                put("scored", s.points != null)
-                put("points", s.points ?: 0.0)
-                put("switched", s.switched ?: false)
-            })
+        list.forEach { session ->
+            arr.put(sessionToJson(session))
         }
         sp.edit().putString(KEY_SESSIONS, arr.toString()).apply()
     }
 
+    private fun sessionToJson(session: Session): JSONObject =
+        JSONObject().apply {
+            put("id", session.id)
+            put("tagId", session.tagId)
+            put("tagKey", session.tagKey ?: "")
+            put("tagName", session.tagName)
+            put("tagColor", session.tagColor)
+            put("planned", session.plannedMinutes)
+            put("start", session.startAt)
+            put("end", session.endAt)
+            put("completed", session.completed)
+            put("scored", session.points != null)
+            put("points", session.points ?: 0.0)
+            put("switched", session.switched ?: false)
+        }
+
+    private fun pointsObject(): JSONObject =
+        JSONObject(sp.getString(KEY_POINTS, "{}"))
+
     fun pointsFor(day: String): Double =
-        JSONObject(sp.getString(KEY_POINTS, "{}")).optDouble(day, 0.0)
+        pointsObject().optDouble(day, 0.0)
+
+    fun totalPoints(): Double {
+        val o = pointsObject()
+        var total = 0.0
+        val keys = o.keys()
+        while (keys.hasNext()) {
+            total += o.optDouble(keys.next(), 0.0)
+        }
+        return total
+    }
 
     fun addPoints(day: String, delta: Double) {
-        val o = JSONObject(sp.getString(KEY_POINTS, "{}"))
+        val o = pointsObject()
         o.put(day, o.optDouble(day, 0.0) + delta)
         sp.edit().putString(KEY_POINTS, o.toString()).apply()
     }
@@ -186,25 +207,70 @@ object Store {
 
     var ringIntervalSeconds: Int
         get() = sp.getInt("ring_interval_seconds", 10).coerceIn(5, 86400)
-        set(value) = sp.edit().putInt("ring_interval_seconds", value.coerceIn(5, 86400)).apply()
+        set(value) = sp.edit()
+            .putInt("ring_interval_seconds", value.coerceIn(5, 86400))
+            .apply()
 
     var nudgeIntervalSeconds: Int
         get() {
             if (sp.contains("nudge_interval_seconds")) {
                 return sp.getInt("nudge_interval_seconds", 60).coerceIn(5, 86400)
             }
-            val legacyMinutes = sp.getInt("nudge_interval_minutes", 1).coerceIn(1, 1440)
+            val legacyMinutes =
+                sp.getInt("nudge_interval_minutes", 1).coerceIn(1, 1440)
             return (legacyMinutes * 60).coerceIn(5, 86400)
         }
-        set(value) = sp.edit().putInt("nudge_interval_seconds", value.coerceIn(5, 86400)).apply()
+        set(value) = sp.edit()
+            .putInt("nudge_interval_seconds", value.coerceIn(5, 86400))
+            .apply()
 
     var lastTagId: String
         get() = sp.getString("last_tag", "") ?: ""
         set(value) = sp.edit().putString("last_tag", value).apply()
 
-    fun timerState(): String? = sp.getString(KEY_TIMER, null)
+    fun timerState(): String? =
+        sp.getString(KEY_TIMER, null)
 
     fun saveTimerState(json: String) {
         sp.edit().putString(KEY_TIMER, json).apply()
+    }
+
+    fun exportAllJson(appVersion: String): String {
+        val tagsArray = JSONArray()
+        tags().forEach { tagsArray.put(tagToJson(it)) }
+
+        val durationArray = JSONArray()
+        durations().forEach { durationArray.put(it) }
+
+        val sessionsArray = JSONArray()
+        sessions().forEach { sessionsArray.put(sessionToJson(it)) }
+
+        val timerJson: Any = timerState()?.let { raw ->
+            runCatching { JSONObject(raw) }.getOrElse { raw }
+        } ?: JSONObject.NULL
+
+        val settings = JSONObject().apply {
+            put("darkMode", darkMode)
+            put("language", language)
+            put("vibration", vibration)
+            put("remindersEnabled", remindersEnabled)
+            put("ringIntervalSeconds", ringIntervalSeconds)
+            put("nudgeIntervalSeconds", nudgeIntervalSeconds)
+            put("lastTagId", lastTagId)
+        }
+
+        return JSONObject().apply {
+            put("format", "NextTick backup")
+            put("schemaVersion", 1)
+            put("appVersion", appVersion)
+            put("exportedAt", System.currentTimeMillis())
+            put("tags", tagsArray)
+            put("durationsMinutes", durationArray)
+            put("sessions", sessionsArray)
+            put("pointsByDay", pointsObject())
+            put("totalPoints", totalPoints())
+            put("settings", settings)
+            put("timerState", timerJson)
+        }.toString(2)
     }
 }

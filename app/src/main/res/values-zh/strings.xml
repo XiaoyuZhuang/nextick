@@ -4,7 +4,7 @@
     <string name="tab_home">首页</string>
     <string name="tab_stats">统计</string>
     <string name="tab_settings">设置</string>
-    <string name="points_today">今日积分</string>
+    <string name="points_today">累计积分</string>
     <string name="points_rule">计时结束后切换到别的事情，按上一段时长得分（每 10 分钟 1 分）；继续同一件事则扣掉同样的分数。</string>
     <string name="section_tags">标签</string>
     <string name="section_duration">时长</string>
@@ -19,7 +19,7 @@
     <string name="state_idle">现在没有倒计时在跑，点下面开始下一个</string>
     <string name="duration_m">%1$d 分钟</string>
     <string name="duration_hm">%1$d 小时 %2$d 分钟</string>
-    <string name="duration_early">%1$s · 提前结束</string>
+    <string name="duration_early">%1$s*</string>
     <string name="tag_study">学习</string>
     <string name="tag_work">工作</string>
     <string name="tag_daily">日常</string>
@@ -84,4 +84,8 @@
     <string name="channel_ongoing">倒计时</string>
     <string name="channel_ring">到点提醒</string>
     <string name="channel_nudge">空档提醒</string>
+    <string name="data_management">数据管理</string>
+    <string name="export_all_data">导出全部数据</string>
+    <string name="export_success">数据已导出</string>
+    <string name="export_error">导出失败</string>
 </resources>

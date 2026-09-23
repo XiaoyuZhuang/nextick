@@ -209,7 +209,7 @@ class HomeFragment : Fragment() {
     private fun render() {
         if (_binding == null) return
         val ctx = requireContext()
-        binding.pointsValue.text = Format.total(Store.pointsFor(Store.todayKey()))
+        binding.pointsValue.text = Format.total(Store.totalPoints())
 
         when (TimerCore.phase) {
             TimerCore.Phase.RUNNING -> {
