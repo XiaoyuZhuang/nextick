@@ -1,11 +1,13 @@
 package com.nextick.app.ui
 
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.Space
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
@@ -121,15 +123,32 @@ class HomeFragment : Fragment() {
                     isChecked = tag.id == selectedTag
                     isChipIconVisible = true
                     chipIcon = circle(tag.color)
-                    textSize = 15f
+
+                    // Keep the color marker deliberately small so a four-column
+                    // layout still has enough room for the tag text.
+                    chipIconSize = ctx.dp(14).toFloat()
+                    chipStartPadding = ctx.dp(6).toFloat()
+                    iconStartPadding = 0f
+                    iconEndPadding = ctx.dp(4).toFloat()
+                    textStartPadding = 0f
+                    textEndPadding = 0f
+                    chipEndPadding = ctx.dp(6).toFloat()
+                    chipMinHeight = ctx.dp(42).toFloat()
+
+                    setTextColor(
+                        ContextCompat.getColor(ctx, R.color.text_primary)
+                    )
+                    textSize = 14f
                     maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    ellipsize = TextUtils.TruncateAt.END
+
                     setOnClickListener {
                         selectedTag = tag.id
                         chips.forEach { it.isChecked = it === this }
                         Notifier.tap(ctx)
                     }
                 }
+
                 row.addView(
                     chip,
                     LinearLayout.LayoutParams(0, ctx.dp(50), 1f).apply {
