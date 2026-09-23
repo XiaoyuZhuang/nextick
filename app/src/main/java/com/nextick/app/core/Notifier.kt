@@ -157,7 +157,7 @@ object Notifier {
             ctx.getSystemService(VibratorManager::class.java)?.defaultVibrator
         } else {
             @Suppress("DEPRECATION")
-            ctx.getSystemService(Context.VIBRATE_SERVICE) as? Vibrator
+            ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         } ?: return
         runCatching {
             vibrator.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
