@@ -11,16 +11,31 @@ android {
         applicationId = "com.nextick.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
-        // 改成你自己的 GitHub 仓库：用户名/仓库名
+        versionCode = 3
+        versionName = "1.2.0"
         buildConfigField("String", "GITHUB_REPO", "\"XiaoyuZhuang/nextick\"")
     }
 
+    signingConfigs {
+        create("nextickPublic") {
+            storeFile = rootProject.file("signing/nextick-public.jks")
+            storePassword = "nextick-public"
+            keyAlias = "nextick"
+            keyPassword = "nextick-public"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("nextickPublic")
+        }
         release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("nextickPublic")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 

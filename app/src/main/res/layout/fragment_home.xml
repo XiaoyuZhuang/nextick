@@ -26,39 +26,25 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:padding="18dp">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/pointsLabel"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/points_today"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
-
-                    <TextView
-                        android:id="@+id/pointsValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/text_primary"
-                        android:textSize="36sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
+                android:padding="16dp">
 
                 <TextView
-                    android:id="@+id/pointsHint"
+                    android:id="@+id/pointsLabel"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:gravity="end"
-                    android:text="@string/points_rule"
+                    android:text="@string/points_today"
                     android:textColor="@color/text_secondary"
-                    android:textSize="11sp" />
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/pointsValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_primary"
+                    android:textSize="32sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -77,20 +63,20 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_horizontal"
                 android:orientation="vertical"
-                android:padding="22dp">
+                android:padding="20dp">
 
                 <TextView
                     android:id="@+id/timerTag"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/timerText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="2dp"
                     android:letterSpacing="0.04"
                     android:textColor="@color/text_primary"
                     android:textSize="58sp"
@@ -100,7 +86,7 @@
                     android:id="@+id/progress"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
+                    android:layout_marginTop="14dp"
                     android:max="100"
                     app:trackCornerRadius="4dp"
                     app:trackThickness="8dp" />
@@ -109,10 +95,11 @@
                     android:id="@+id/timerState"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="12dp"
                     android:gravity="center"
                     android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
+                    android:textSize="13sp"
+                    android:visibility="gone" />
 
                 <LinearLayout
                     android:id="@+id/actions"
@@ -143,7 +130,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="18dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -181,7 +168,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="14dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -206,18 +193,8 @@
             android:id="@+id/durationRows"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:orientation="vertical" />
-
-        <TextView
-            android:id="@+id/hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="2dp"
             android:layout_marginBottom="8dp"
-            android:gravity="center"
-            android:text="@string/hint_two_taps"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:orientation="vertical" />
     </LinearLayout>
 </ScrollView>

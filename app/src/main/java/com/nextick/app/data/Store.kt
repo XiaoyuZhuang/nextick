@@ -164,7 +164,7 @@ object Store {
 
     fun addPoints(day: String, delta: Double) {
         val o = JSONObject(sp.getString(KEY_POINTS, "{}"))
-        o.put(day, (o.optDouble(day, 0.0) + delta))
+        o.put(day, o.optDouble(day, 0.0) + delta)
         sp.edit().putString(KEY_POINTS, o.toString()).apply()
     }
 
@@ -180,13 +180,23 @@ object Store {
         get() = sp.getBoolean("vibration", true)
         set(value) = sp.edit().putBoolean("vibration", value).apply()
 
-    var ringIntervalSeconds: Int
-        get() = sp.getInt("ring_interval_seconds", 10).coerceIn(5, 3600)
-        set(value) = sp.edit().putInt("ring_interval_seconds", value.coerceIn(5, 3600)).apply()
+    var remindersEnabled: Boolean
+        get() = sp.getBoolean("reminders_enabled", true)
+        set(value) = sp.edit().putBoolean("reminders_enabled", value).apply()
 
-    var nudgeIntervalMinutes: Int
-        get() = sp.getInt("nudge_interval_minutes", 1).coerceIn(1, 1440)
-        set(value) = sp.edit().putInt("nudge_interval_minutes", value.coerceIn(1, 1440)).apply()
+    var ringIntervalSeconds: Int
+        get() = sp.getInt("ring_interval_seconds", 10).coerceIn(5, 86400)
+        set(value) = sp.edit().putInt("ring_interval_seconds", value.coerceIn(5, 86400)).apply()
+
+    var nudgeIntervalSeconds: Int
+        get() {
+            if (sp.contains("nudge_interval_seconds")) {
+                return sp.getInt("nudge_interval_seconds", 60).coerceIn(5, 86400)
+            }
+            val legacyMinutes = sp.getInt("nudge_interval_minutes", 1).coerceIn(1, 1440)
+            return (legacyMinutes * 60).coerceIn(5, 86400)
+        }
+        set(value) = sp.edit().putInt("nudge_interval_seconds", value.coerceIn(5, 86400)).apply()
 
     var lastTagId: String
         get() = sp.getString("last_tag", "") ?: ""

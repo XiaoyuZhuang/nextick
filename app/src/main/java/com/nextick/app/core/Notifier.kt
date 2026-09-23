@@ -20,8 +20,6 @@ import com.nextick.app.data.Store
 
 object Notifier {
     private const val CH_ONGOING = "nextick_ongoing"
-
-    // v2: intentionally new IDs so an update replaces the old silent channels immediately.
     private const val CH_RING_ALERT = "nextick_ring_alert_v2"
     private const val CH_RING_SOUND = "nextick_ring_sound_v2"
     private const val CH_NUDGE_ALERT = "nextick_nudge_alert_v2"
@@ -43,8 +41,6 @@ object Notifier {
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
 
-        // Clean up channel IDs used by the first build. Android channel sound/vibration
-        // properties are immutable after creation, so reusing those IDs would stay silent.
         listOf("nextick_ring_haptic", "nextick_ring_silent", "nextick_nudge").forEach {
             runCatching { nm.deleteNotificationChannel(it) }
         }
@@ -72,6 +68,7 @@ object Notifier {
                 vibrationPattern = longArrayOf(0, 250, 120, 250)
             }
         )
+
         nm.createNotificationChannel(
             NotificationChannel(
                 CH_RING_SOUND,
@@ -82,6 +79,7 @@ object Notifier {
                 enableVibration(false)
             }
         )
+
         nm.createNotificationChannel(
             NotificationChannel(
                 CH_NUDGE_ALERT,
@@ -93,6 +91,7 @@ object Notifier {
                 vibrationPattern = longArrayOf(0, 180, 100, 180)
             }
         )
+
         nm.createNotificationChannel(
             NotificationChannel(
                 CH_NUDGE_SOUND,
@@ -136,6 +135,7 @@ object Notifier {
     }
 
     fun ring(ctx: Context) {
+        if (!Store.remindersEnabled) return
         val loc = ctx.localised()
         val channel = if (Store.vibration) CH_RING_ALERT else CH_RING_SOUND
         val b = NotificationCompat.Builder(ctx, channel)
@@ -152,7 +152,6 @@ object Notifier {
                 loc.getString(R.string.action_dismiss),
                 openApp(ctx)
             )
-
         if (Store.vibration) {
             b.setVibrate(longArrayOf(0, 250, 120, 250))
         }
@@ -160,6 +159,7 @@ object Notifier {
     }
 
     fun nudge(ctx: Context) {
+        if (!Store.remindersEnabled) return
         val loc = ctx.localised()
         val channel = if (Store.vibration) CH_NUDGE_ALERT else CH_NUDGE_SOUND
         val b = NotificationCompat.Builder(ctx, channel)
@@ -186,8 +186,8 @@ object Notifier {
     }
 
     fun tap(ctx: Context) = vibrate(ctx, 18)
-
-    fun pulse(ctx: Context) = vibrate(ctx, 90)
+    fun confirm(ctx: Context) = vibrate(ctx, 38)
+    fun warning(ctx: Context) = vibrate(ctx, 72)
 
     private fun vibrate(ctx: Context, ms: Long) {
         if (!Store.vibration) return
@@ -197,8 +197,11 @@ object Notifier {
             @Suppress("DEPRECATION")
             ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         } ?: return
+
         runCatching {
-            vibrator.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
+            vibrator.vibrate(
+                VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
+            )
         }
     }
 

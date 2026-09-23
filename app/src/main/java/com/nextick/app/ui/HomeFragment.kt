@@ -17,6 +17,7 @@ import com.nextick.app.core.TimerCore
 import com.nextick.app.data.Store
 import com.nextick.app.data.TagNames
 import com.nextick.app.databinding.FragmentHomeBinding
+import com.nextick.app.service.TimerService
 
 class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
@@ -42,19 +43,22 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         buildDurations()
-        binding.pointsHint.text = getString(R.string.points_rule)
+
         binding.btnDismiss.setOnClickListener {
-            Notifier.tap(requireContext())
+            Notifier.confirm(requireContext())
             TimerCore.dismissRing()
         }
+
         binding.btnFinish.setOnClickListener {
-            Notifier.tap(requireContext())
+            Notifier.confirm(requireContext())
             TimerCore.finishEarly()
         }
+
         binding.btnManageTags.setOnClickListener {
             Notifier.tap(requireContext())
             TagManager.show(this) { rebuildTags() }
         }
+
         binding.btnManageDurations.setOnClickListener {
             Notifier.tap(requireContext())
             DurationManager.show(this) { buildDurations() }
@@ -92,6 +96,7 @@ class HomeFragment : Fragment() {
         if (_binding == null) return
         val ctx = requireContext()
         val tags = Store.tags()
+
         binding.tagGroup.removeAllViews()
         chips.clear()
 
@@ -101,29 +106,28 @@ class HomeFragment : Fragment() {
                 else tags.firstOrNull()?.id
         }
 
-        tags.forEach { t ->
+        tags.forEach { tag ->
             val chip = Chip(ctx).apply {
                 id = View.generateViewId()
-                text = TagNames.of(ctx, t.nameKey, t.name)
+                text = TagNames.of(ctx, tag.nameKey, tag.name)
                 isCheckable = true
-                isChecked = t.id == selectedTag
-                chipIcon = circle(t.color)
+                isChecked = tag.id == selectedTag
+                chipIcon = circle(tag.color)
                 isChipIconVisible = true
                 setOnClickListener {
-                    selectedTag = t.id
+                    selectedTag = tag.id
                     Notifier.tap(ctx)
-                    updateHint()
                 }
             }
             binding.tagGroup.addView(chip)
             chips.add(chip)
         }
-        updateHint()
     }
 
     private fun buildDurations() {
         if (_binding == null) return
         val ctx = requireContext()
+
         binding.durationRows.removeAllViews()
         val durations = Store.durations()
         val rows = durations.chunked(4)
@@ -151,10 +155,11 @@ class HomeFragment : Fragment() {
                     ).apply {
                         setMargins(ctx.dp(4), ctx.dp(4), ctx.dp(4), ctx.dp(4))
                     }
+
                     setOnClickListener {
                         val sel = selectedTag
                         if (sel == null) {
-                            binding.hint.text = getString(R.string.hint_pick_tag_first)
+                            Notifier.warning(ctx)
                             return@setOnClickListener
                         }
                         Notifier.tap(ctx)
@@ -165,9 +170,8 @@ class HomeFragment : Fragment() {
             }
 
             repeat(4 - group.size) {
-                val spacer = Space(ctx)
                 row.addView(
-                    spacer,
+                    Space(ctx),
                     LinearLayout.LayoutParams(0, ctx.dp(52), 1f).apply {
                         setMargins(ctx.dp(4), ctx.dp(4), ctx.dp(4), ctx.dp(4))
                     }
@@ -177,19 +181,28 @@ class HomeFragment : Fragment() {
     }
 
     private fun confirmAndStart(tagId: String, minutes: Int) {
+        val ctx = requireContext()
         val pending = Store.lastUnsettled()
+
         if (pending != null && pending.tagId == tagId) {
+            Notifier.warning(ctx)
             val points = Format.total(pending.previewScore())
-            MaterialAlertDialogBuilder(requireContext())
+            MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.same_task_dialog_title)
                 .setMessage(getString(R.string.same_task_dialog_message, points))
-                .setNegativeButton(R.string.switch_task, null)
+                .setNegativeButton(R.string.switch_task) { _, _ ->
+                    Notifier.tap(ctx)
+                }
                 .setPositiveButton(R.string.continue_and_deduct) { _, _ ->
+                    Notifier.confirm(ctx)
                     TimerCore.startSession(tagId, minutes)
+                    TimerService.sync(ctx)
                 }
                 .show()
         } else {
+            Notifier.confirm(ctx)
             TimerCore.startSession(tagId, minutes)
+            TimerService.sync(ctx)
         }
     }
 
@@ -202,14 +215,18 @@ class HomeFragment : Fragment() {
             TimerCore.Phase.RUNNING -> {
                 val remain = TimerCore.remainingMillis
                 val totalMs = TimerCore.plannedSeconds * 1000L
+
                 binding.timerTag.text = TimerCore.tagName
                 binding.timerText.text = Format.clock(remain)
                 binding.progress.progress =
                     if (totalMs > 0) ((totalMs - remain) * 100 / totalMs).toInt() else 0
+
+                binding.timerState.visibility = View.VISIBLE
                 binding.timerState.text = getString(
                     R.string.state_running,
                     Format.minutes(ctx, TimerCore.plannedSeconds / 60)
                 )
+
                 binding.btnFinish.visibility = View.VISIBLE
                 binding.btnDismiss.visibility = View.GONE
             }
@@ -218,34 +235,26 @@ class HomeFragment : Fragment() {
                 binding.timerTag.text = TimerCore.tagName
                 binding.timerText.text = Format.clock(0)
                 binding.progress.progress = 100
+
+                binding.timerState.visibility = View.VISIBLE
                 binding.timerState.text = getString(R.string.state_ringing)
+
                 binding.btnFinish.visibility = View.GONE
                 binding.btnDismiss.visibility = View.VISIBLE
             }
 
             TimerCore.Phase.IDLE -> {
                 val tag = selectedTag?.let { Store.tag(it) }
+
                 binding.timerTag.text =
                     tag?.let { TagNames.of(ctx, it.nameKey, it.name) } ?: "—"
                 binding.timerText.text = "--:--"
                 binding.progress.progress = 0
-                binding.timerState.text = getString(R.string.state_idle)
+                binding.timerState.visibility = View.GONE
+
                 binding.btnFinish.visibility = View.GONE
                 binding.btnDismiss.visibility = View.GONE
             }
         }
-        updateHint()
-    }
-
-    private fun updateHint() {
-        if (_binding == null) return
-        val pending = Store.lastUnsettled()
-        val sel = selectedTag
-        binding.hint.text =
-            if (pending != null && sel != null && pending.tagId == sel) {
-                getString(R.string.hint_same_tag, Format.total(pending.previewScore()))
-            } else {
-                getString(R.string.hint_two_taps)
-            }
     }
 }

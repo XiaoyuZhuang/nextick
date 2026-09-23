@@ -14,13 +14,22 @@ object AlarmPlanner {
         val am = ctx.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
         val pi = pending(ctx)
         val now = System.currentTimeMillis()
+
+        if (!Store.remindersEnabled && TimerCore.phase != TimerCore.Phase.RUNNING) {
+            am.cancel(pi)
+            return
+        }
+
         val at = when (TimerCore.phase) {
             TimerCore.Phase.RUNNING -> TimerCore.endAt
             TimerCore.Phase.RINGING ->
-                (TimerCore.lastPingAt + Store.ringIntervalSeconds * 1000L).coerceAtLeast(now + 2_000L)
+                (TimerCore.lastPingAt + Store.ringIntervalSeconds * 1000L)
+                    .coerceAtLeast(now + 2_000L)
             TimerCore.Phase.IDLE ->
-                (TimerCore.lastPingAt + Store.nudgeIntervalMinutes * 60_000L).coerceAtLeast(now + 2_000L)
+                (TimerCore.lastPingAt + Store.nudgeIntervalSeconds * 1000L)
+                    .coerceAtLeast(now + 2_000L)
         }
+
         am.cancel(pi)
         try {
             am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
@@ -29,9 +38,15 @@ object AlarmPlanner {
         }
     }
 
+    fun cancel(ctx: Context) {
+        val am = ctx.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        am.cancel(pending(ctx))
+    }
+
     private fun pending(ctx: Context): PendingIntent =
         PendingIntent.getBroadcast(
-            ctx, REQ,
+            ctx,
+            REQ,
             Intent(ctx, AlarmReceiver::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

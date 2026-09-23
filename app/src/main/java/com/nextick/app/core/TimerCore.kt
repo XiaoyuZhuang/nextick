@@ -38,7 +38,9 @@ object TimerCore {
     fun removeListener(l: Listener) { listeners.remove(l) }
 
     val remainingMillis: Long
-        get() = if (phase == Phase.RUNNING) (endAt - System.currentTimeMillis()).coerceAtLeast(0) else 0L
+        get() = if (phase == Phase.RUNNING) {
+            (endAt - System.currentTimeMillis()).coerceAtLeast(0)
+        } else 0L
 
     val elapsedMillis: Long
         get() = if (phase == Phase.RUNNING) plannedSeconds * 1000L - remainingMillis else 0L
@@ -89,10 +91,48 @@ object TimerCore {
         commit(ctx)
     }
 
+    fun reminderPolicyChanged(enabled: Boolean) {
+        val ctx = app ?: return
+        val now = System.currentTimeMillis()
+        if (!enabled) {
+            if (phase == Phase.RINGING) phase = Phase.IDLE
+            Notifier.cancelRing(ctx)
+            Notifier.cancelNudge(ctx)
+        }
+        if (phase != Phase.RUNNING) {
+            phaseStartedAt = now
+            lastPingAt = now
+        }
+        commit(ctx)
+    }
+
     fun tick() {
         val ctx = app ?: return
         val now = System.currentTimeMillis()
         var dirty = false
+
+        if (!Store.remindersEnabled) {
+            when (phase) {
+                Phase.RUNNING -> if (now >= endAt) {
+                    record(completed = true)
+                    phase = Phase.IDLE
+                    phaseStartedAt = now
+                    lastPingAt = now
+                    dirty = true
+                }
+                Phase.RINGING -> {
+                    phase = Phase.IDLE
+                    phaseStartedAt = now
+                    lastPingAt = now
+                    Notifier.cancelRing(ctx)
+                    dirty = true
+                }
+                Phase.IDLE -> Unit
+            }
+            if (dirty) commit(ctx) else fire()
+            return
+        }
+
         when (phase) {
             Phase.RUNNING -> if (now >= endAt) {
                 record(completed = true)
@@ -107,12 +147,13 @@ object TimerCore {
                 Notifier.ring(ctx)
                 dirty = true
             }
-            Phase.IDLE -> if (now - lastPingAt >= Store.nudgeIntervalMinutes * 60_000L) {
+            Phase.IDLE -> if (now - lastPingAt >= Store.nudgeIntervalSeconds * 1000L) {
                 lastPingAt = now
                 Notifier.nudge(ctx)
                 dirty = true
             }
         }
+
         if (dirty) commit(ctx) else fire()
     }
 
@@ -121,10 +162,15 @@ object TimerCore {
         val end = if (completed) endAt else now
         Store.addSession(
             Session(
-                id = UUID.randomUUID().toString(), tagId = tagId, tagKey = tagKey,
-                tagName = tagName, tagColor = tagColor,
-                plannedMinutes = plannedSeconds / 60, startAt = startedAt,
-                endAt = end.coerceAtLeast(startedAt + 1000L), completed = completed
+                id = UUID.randomUUID().toString(),
+                tagId = tagId,
+                tagKey = tagKey,
+                tagName = tagName,
+                tagColor = tagColor,
+                plannedMinutes = plannedSeconds / 60,
+                startAt = startedAt,
+                endAt = end.coerceAtLeast(startedAt + 1000L),
+                completed = completed
             )
         )
     }
@@ -148,7 +194,9 @@ object TimerCore {
         fire()
     }
 
-    private fun fire() { listeners.forEach { it.onTimerChanged() } }
+    private fun fire() {
+        listeners.forEach { it.onTimerChanged() }
+    }
 
     private fun persist() {
         val o = JSONObject()
@@ -183,6 +231,8 @@ object TimerCore {
             phaseStartedAt = o.optLong("phaseStartedAt")
             lastPingAt = o.optLong("lastPingAt")
         }
-        if (phase == Phase.IDLE && lastPingAt == 0L) lastPingAt = System.currentTimeMillis()
+        if (phase == Phase.IDLE && lastPingAt == 0L) {
+            lastPingAt = System.currentTimeMillis()
+        }
     }
 }

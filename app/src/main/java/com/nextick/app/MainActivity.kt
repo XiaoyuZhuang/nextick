@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.nextick.app.core.AppVisibility
 import com.nextick.app.core.LocaleHelper
+import com.nextick.app.core.Notifier
 import com.nextick.app.core.TimerCore
 import com.nextick.app.data.Store
 import com.nextick.app.service.TimerService
@@ -42,10 +43,12 @@ class MainActivity : AppCompatActivity() {
                 .commit()
         }
 
-        findViewById<BottomNavigationView>(R.id.bottomNav).setOnItemSelectedListener { item ->
-            showTab(item.itemId)
-            true
-        }
+        findViewById<BottomNavigationView>(R.id.bottomNav)
+            .setOnItemSelectedListener { item ->
+                Notifier.tap(this)
+                showTab(item.itemId)
+                true
+            }
 
         requestNotificationPermission()
     }
@@ -69,9 +72,10 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         AppVisibility.visible = true
         TimerCore.init(applicationContext)
-        TimerService.start(this)
-        // 打开软件 = 取消到点提醒
-        if (TimerCore.phase == TimerCore.Phase.RINGING) TimerCore.dismissRing()
+        TimerService.sync(this)
+        if (TimerCore.phase == TimerCore.Phase.RINGING) {
+            TimerCore.dismissRing()
+        }
     }
 
     override fun onStop() {
@@ -82,11 +86,14 @@ class MainActivity : AppCompatActivity() {
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT < 33) return
         val granted = ContextCompat.checkSelfPermission(
-            this, Manifest.permission.POST_NOTIFICATIONS
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
         ) == PackageManager.PERMISSION_GRANTED
         if (!granted) {
             ActivityCompat.requestPermissions(
-                this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                1001
             )
         }
     }
