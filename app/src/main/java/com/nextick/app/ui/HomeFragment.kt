@@ -23,6 +23,7 @@ class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private val chips = ArrayList<Chip>()
+    private val durationButtons = ArrayList<MaterialButton>()
     private var selectedTag: String? = null
 
     private val listener = object : TimerCore.Listener {
@@ -129,6 +130,8 @@ class HomeFragment : Fragment() {
         val ctx = requireContext()
 
         binding.durationRows.removeAllViews()
+        durationButtons.clear()
+
         val durations = Store.durations()
         val rows = durations.chunked(4)
 
@@ -148,6 +151,7 @@ class HomeFragment : Fragment() {
                     textSize = 20f
                     isAllCaps = false
                     setPadding(0, 0, 0, 0)
+                    isEnabled = TimerCore.phase != TimerCore.Phase.RUNNING
                     layoutParams = LinearLayout.LayoutParams(
                         0,
                         ctx.dp(52),
@@ -158,6 +162,10 @@ class HomeFragment : Fragment() {
 
                     setOnClickListener {
                         val sel = selectedTag
+                        if (TimerCore.phase == TimerCore.Phase.RUNNING) {
+                            Notifier.warning(ctx)
+                            return@setOnClickListener
+                        }
                         if (sel == null) {
                             Notifier.warning(ctx)
                             return@setOnClickListener
@@ -167,6 +175,7 @@ class HomeFragment : Fragment() {
                     }
                 }
                 row.addView(button)
+                durationButtons.add(button)
             }
 
             repeat(4 - group.size) {
@@ -182,6 +191,12 @@ class HomeFragment : Fragment() {
 
     private fun confirmAndStart(tagId: String, minutes: Int) {
         val ctx = requireContext()
+
+        if (TimerCore.phase == TimerCore.Phase.RUNNING) {
+            Notifier.warning(ctx)
+            return
+        }
+
         val pending = Store.lastUnsettled()
 
         if (pending != null && pending.tagId == tagId) {
@@ -210,6 +225,9 @@ class HomeFragment : Fragment() {
         if (_binding == null) return
         val ctx = requireContext()
         binding.pointsValue.text = Format.total(Store.totalPoints())
+
+        val running = TimerCore.phase == TimerCore.Phase.RUNNING
+        durationButtons.forEach { it.isEnabled = !running }
 
         when (TimerCore.phase) {
             TimerCore.Phase.RUNNING -> {

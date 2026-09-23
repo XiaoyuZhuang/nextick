@@ -88,4 +88,7 @@
     <string name="export_all_data">导出全部数据</string>
     <string name="export_success">数据已导出</string>
     <string name="export_error">导出失败</string>
+    <string name="delete_session_title">删除这条记录？</string>
+    <string name="delete_session_message">%1$s · %2$s · %3$s\n对应的时间和积分也会从今日统计中删除。</string>
+    <string name="delete_session_confirm">删除</string>
 </resources>

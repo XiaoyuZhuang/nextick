@@ -1,25 +1,24 @@
 package com.nextick.app.ui
 
 import android.os.Bundle
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.nextick.app.R
 import com.nextick.app.core.Format
 import com.nextick.app.core.Notifier
+import com.nextick.app.data.Session
 import com.nextick.app.data.Store
 import com.nextick.app.data.TagNames
 import com.nextick.app.databinding.FragmentStatsBinding
+import com.nextick.app.databinding.ItemSessionBinding
 
 class StatsFragment : Fragment() {
     private var _binding: FragmentStatsBinding? = null
     private val binding get() = _binding!!
-    private val adapter = SessionAdapter()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -32,9 +31,9 @@ class StatsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.timeline.layoutManager = LinearLayoutManager(requireContext())
-        binding.timeline.adapter = adapter
-        binding.pie.setOnClickListener { Notifier.tap(requireContext()) }
+        binding.pie.setOnClickListener {
+            Notifier.tap(requireContext())
+        }
         refresh()
     }
 
@@ -56,10 +55,13 @@ class StatsFragment : Fragment() {
     private fun refresh() {
         if (_binding == null) return
         val ctx = requireContext()
+
         val sessions =
-            Store.sessionsOfDay(Store.todayKey()).sortedByDescending { it.startAt }
+            Store.sessionsOfDay(Store.todayKey())
+                .sortedByDescending { it.startAt }
 
         val groups = LinkedHashMap<String, PieChartView.Slice>()
+
         sessions.forEach { session ->
             val current = groups[session.tagId]
             groups[session.tagId] = PieChartView.Slice(
@@ -69,71 +71,96 @@ class StatsFragment : Fragment() {
             )
         }
 
-        val slices = groups.values.sortedByDescending { it.minutes }
+        val slices =
+            groups.values.sortedByDescending { it.minutes }
+
         val total = slices.sumOf { it.minutes }
 
         binding.pie.slices = slices
         binding.pie.centerPrimary = Format.minutes(ctx, total)
         binding.pie.centerSecondary = getString(R.string.stats_today)
-        binding.totalText.text =
-            getString(R.string.total_label, Format.minutes(ctx, total))
 
-        binding.legend.removeAllViews()
+        binding.timelineList.removeAllViews()
 
-        slices.forEach { slice ->
-            val row = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, ctx.dp(6), 0, ctx.dp(6))
-                isClickable = true
-                setOnClickListener { Notifier.tap(ctx) }
-            }
-
-            val dot = View(ctx).apply {
-                background = circle(slice.color)
-            }
-            row.addView(
-                dot,
-                LinearLayout.LayoutParams(ctx.dp(12), ctx.dp(12))
+        sessions.forEach { session ->
+            val row = ItemSessionBinding.inflate(
+                layoutInflater,
+                binding.timelineList,
+                false
             )
 
-            val label = TextView(ctx).apply {
-                text = slice.label
-                textSize = 14f
-                setTextColor(
-                    androidx.core.content.ContextCompat.getColor(
-                        ctx,
-                        R.color.text_primary
+            row.timeRange.text =
+                Format.range(session.startAt, session.endAt)
+
+            row.tagName.text =
+                TagNames.of(ctx, session.tagKey, session.tagName)
+
+            row.duration.text =
+                if (session.completed) {
+                    Format.minutes(ctx, session.minutes)
+                } else {
+                    getString(
+                        R.string.duration_early,
+                        Format.minutes(ctx, session.minutes)
                     )
-                )
-                setPadding(ctx.dp(10), 0, 0, 0)
-            }
-            row.addView(
-                label,
-                LinearLayout.LayoutParams(
-                    0,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    1f
+                }
+
+            row.colorDot.background = circle(session.tagColor)
+
+            val points = session.points
+            row.points.text =
+                points?.let { Format.points(it) } ?: "-"
+
+            row.points.setTextColor(
+                ContextCompat.getColor(
+                    ctx,
+                    if ((points ?: 0.0) >= 0) {
+                        R.color.positive
+                    } else {
+                        R.color.negative
+                    }
                 )
             )
 
-            val value = TextView(ctx).apply {
-                text = Format.minutes(ctx, slice.minutes)
-                textSize = 13f
-                setTextColor(
-                    androidx.core.content.ContextCompat.getColor(
-                        ctx,
-                        R.color.text_secondary
-                    )
-                )
+            row.root.setOnClickListener {
+                Notifier.tap(ctx)
+                confirmDelete(session)
             }
-            row.addView(value)
 
-            binding.legend.addView(row)
+            binding.timelineList.addView(row.root)
         }
 
-        adapter.submit(sessions)
         binding.emptyText.visibility =
             if (sessions.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    private fun confirmDelete(session: Session) {
+        val ctx = requireContext()
+        val tag = TagNames.of(
+            ctx,
+            session.tagKey,
+            session.tagName
+        )
+
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(R.string.delete_session_title)
+            .setMessage(
+                getString(
+                    R.string.delete_session_message,
+                    Format.range(session.startAt, session.endAt),
+                    tag,
+                    Format.minutes(ctx, session.minutes)
+                )
+            )
+            .setNegativeButton(R.string.cancel) { _, _ ->
+                Notifier.tap(ctx)
+            }
+            .setPositiveButton(R.string.delete_session_confirm) { _, _ ->
+                if (Store.deleteSession(session.id)) {
+                    Notifier.warning(ctx)
+                    refresh()
+                }
+            }
+            .show()
     }
 }

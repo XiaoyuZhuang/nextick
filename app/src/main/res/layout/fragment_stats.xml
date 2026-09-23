@@ -19,30 +19,16 @@
             android:textSize="22sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/totalText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp" />
-
         <com.nextick.app.ui.PieChartView
             android:id="@+id/pie"
             android:layout_width="match_parent"
-            android:layout_height="250dp"
-            android:layout_marginTop="6dp" />
-
-        <LinearLayout
-            android:id="@+id/legend"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:layout_height="290dp"
+            android:layout_marginTop="4dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="10dp"
             android:text="@string/timeline"
             android:textColor="@color/text_primary"
             android:textSize="16sp"
@@ -58,12 +44,12 @@
             android:textColor="@color/text_secondary"
             android:visibility="gone" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/timeline"
+        <LinearLayout
+            android:id="@+id/timelineList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:nestedScrollingEnabled="false"
-            android:paddingBottom="12dp" />
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="12dp"
+            android:orientation="vertical" />
     </LinearLayout>
 </ScrollView>

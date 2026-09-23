@@ -88,4 +88,7 @@
     <string name="export_all_data">Export all data</string>
     <string name="export_success">Data exported</string>
     <string name="export_error">Export failed</string>
+    <string name="delete_session_title">Delete this record?</string>
+    <string name="delete_session_message">%1$s · %2$s · %3$s\nIts time and points will also be removed from today’s statistics.</string>
+    <string name="delete_session_confirm">Delete</string>
 </resources>

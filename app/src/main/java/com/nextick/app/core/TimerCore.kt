@@ -47,8 +47,12 @@ object TimerCore {
 
     fun startSession(tagId: String, minutes: Int) {
         val ctx = app ?: return
+
+        // A running countdown must never be replaced by an accidental second tap.
+        // To change tasks intentionally, finish the current session first.
+        if (phase == Phase.RUNNING) return
+
         val tag = Store.tag(tagId) ?: return
-        if (phase == Phase.RUNNING) record(completed = false)
         settle(tagId)
 
         val now = System.currentTimeMillis()

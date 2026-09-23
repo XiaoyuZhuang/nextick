@@ -60,9 +60,7 @@ object Store {
 
     private fun writeTags(list: List<Tag>) {
         val arr = JSONArray()
-        list.forEach { tag ->
-            arr.put(tagToJson(tag))
-        }
+        list.forEach { tag -> arr.put(tagToJson(tag)) }
         sp.edit().putString(KEY_TAGS, arr.toString()).apply()
     }
 
@@ -137,6 +135,18 @@ object Store {
         }
     }
 
+    fun deleteSession(id: String): Boolean {
+        val list = sessions()
+        val removed = list.firstOrNull { it.id == id } ?: return false
+        list.removeAll { it.id == id }
+        writeSessions(list)
+        rebuildPointsFromSessions(list)
+        if (lastTagId == removed.tagId && list.none { it.tagId == removed.tagId }) {
+            lastTagId = ""
+        }
+        return true
+    }
+
     fun lastUnsettled(): Session? =
         sessions().lastOrNull { it.points == null }
 
@@ -145,9 +155,7 @@ object Store {
 
     private fun writeSessions(list: List<Session>) {
         val arr = JSONArray()
-        list.forEach { session ->
-            arr.put(sessionToJson(session))
-        }
+        list.forEach { session -> arr.put(sessionToJson(session)) }
         sp.edit().putString(KEY_SESSIONS, arr.toString()).apply()
     }
 
@@ -186,6 +194,16 @@ object Store {
     fun addPoints(day: String, delta: Double) {
         val o = pointsObject()
         o.put(day, o.optDouble(day, 0.0) + delta)
+        sp.edit().putString(KEY_POINTS, o.toString()).apply()
+    }
+
+    private fun rebuildPointsFromSessions(list: List<Session>) {
+        val o = JSONObject()
+        list.forEach { session ->
+            val value = session.points ?: return@forEach
+            val day = dayOf(session.endAt)
+            o.put(day, o.optDouble(day, 0.0) + value)
+        }
         sp.edit().putString(KEY_POINTS, o.toString()).apply()
     }
 
