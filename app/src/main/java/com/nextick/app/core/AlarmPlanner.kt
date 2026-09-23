@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import com.nextick.app.data.Store
 import com.nextick.app.service.AlarmReceiver
 
 object AlarmPlanner {
@@ -15,8 +16,10 @@ object AlarmPlanner {
         val now = System.currentTimeMillis()
         val at = when (TimerCore.phase) {
             TimerCore.Phase.RUNNING -> TimerCore.endAt
-            TimerCore.Phase.RINGING -> (TimerCore.lastPingAt + 10_000L).coerceAtLeast(now + 2_000L)
-            TimerCore.Phase.IDLE -> (TimerCore.lastPingAt + 60_000L).coerceAtLeast(now + 2_000L)
+            TimerCore.Phase.RINGING ->
+                (TimerCore.lastPingAt + Store.ringIntervalSeconds * 1000L).coerceAtLeast(now + 2_000L)
+            TimerCore.Phase.IDLE ->
+                (TimerCore.lastPingAt + Store.nudgeIntervalMinutes * 60_000L).coerceAtLeast(now + 2_000L)
         }
         am.cancel(pi)
         try {

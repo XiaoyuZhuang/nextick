@@ -13,8 +13,6 @@ object TimerCore {
 
     interface Listener { fun onTimerChanged() }
 
-    private const val RING_INTERVAL = 10_000L
-    private const val NUDGE_INTERVAL = 60_000L
     private val listeners = CopyOnWriteArrayList<Listener>()
     private var app: Context? = null
 
@@ -104,12 +102,12 @@ object TimerCore {
                 Notifier.ring(ctx)
                 dirty = true
             }
-            Phase.RINGING -> if (now - lastPingAt >= RING_INTERVAL) {
+            Phase.RINGING -> if (now - lastPingAt >= Store.ringIntervalSeconds * 1000L) {
                 lastPingAt = now
                 Notifier.ring(ctx)
                 dirty = true
             }
-            Phase.IDLE -> if (now - lastPingAt >= NUDGE_INTERVAL) {
+            Phase.IDLE -> if (now - lastPingAt >= Store.nudgeIntervalMinutes * 60_000L) {
                 lastPingAt = now
                 Notifier.nudge(ctx)
                 dirty = true

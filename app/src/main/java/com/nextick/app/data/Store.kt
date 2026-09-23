@@ -11,6 +11,7 @@ import java.util.UUID
 
 object Store {
     private const val KEY_TAGS = "tags"
+    private const val KEY_DURATIONS = "durations"
     private const val KEY_SESSIONS = "sessions"
     private const val KEY_POINTS = "points"
     private const val KEY_TIMER = "timer_state"
@@ -21,6 +22,7 @@ object Store {
         if (::sp.isInitialized) return
         sp = context.applicationContext.getSharedPreferences("nextick_data", Context.MODE_PRIVATE)
         if (!sp.contains(KEY_TAGS)) writeTags(defaultTags())
+        if (!sp.contains(KEY_DURATIONS)) saveDurations(defaultDurations())
     }
 
     fun dayOf(ts: Long): String =
@@ -67,6 +69,27 @@ object Store {
             })
         }
         sp.edit().putString(KEY_TAGS, arr.toString()).apply()
+    }
+
+    private fun defaultDurations(): List<Int> = listOf(5, 10, 15, 20, 25, 30, 40)
+
+    fun durations(): List<Int> {
+        val raw = sp.getString(KEY_DURATIONS, null) ?: return defaultDurations()
+        return runCatching {
+            val arr = JSONArray(raw)
+            (0 until arr.length())
+                .map { arr.optInt(it) }
+                .filter { it > 0 }
+                .distinct()
+                .sorted()
+        }.getOrDefault(defaultDurations())
+    }
+
+    fun saveDurations(values: List<Int>) {
+        val clean = values.filter { it in 1..999 }.distinct().sorted()
+        val arr = JSONArray()
+        clean.forEach { arr.put(it) }
+        sp.edit().putString(KEY_DURATIONS, arr.toString()).apply()
     }
 
     fun sessions(): MutableList<Session> {
@@ -156,6 +179,14 @@ object Store {
     var vibration: Boolean
         get() = sp.getBoolean("vibration", true)
         set(value) = sp.edit().putBoolean("vibration", value).apply()
+
+    var ringIntervalSeconds: Int
+        get() = sp.getInt("ring_interval_seconds", 10).coerceIn(5, 3600)
+        set(value) = sp.edit().putInt("ring_interval_seconds", value.coerceIn(5, 3600)).apply()
+
+    var nudgeIntervalMinutes: Int
+        get() = sp.getInt("nudge_interval_minutes", 1).coerceIn(1, 1440)
+        set(value) = sp.edit().putInt("nudge_interval_minutes", value.coerceIn(1, 1440)).apply()
 
     var lastTagId: String
         get() = sp.getString("last_tag", "") ?: ""

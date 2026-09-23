@@ -11,8 +11,8 @@ android {
         applicationId = "com.nextick.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         // 改成你自己的 GitHub 仓库：用户名/仓库名
         buildConfigField("String", "GITHUB_REPO", "\"XiaoyuZhuang/nextick\"")
     }

@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -18,9 +20,12 @@ import com.nextick.app.data.Store
 
 object Notifier {
     private const val CH_ONGOING = "nextick_ongoing"
-    private const val CH_RING_HAPTIC = "nextick_ring_haptic"
-    private const val CH_RING_SILENT = "nextick_ring_silent"
-    private const val CH_NUDGE = "nextick_nudge"
+
+    // v2: intentionally new IDs so an update replaces the old silent channels immediately.
+    private const val CH_RING_ALERT = "nextick_ring_alert_v2"
+    private const val CH_RING_SOUND = "nextick_ring_sound_v2"
+    private const val CH_NUDGE_ALERT = "nextick_nudge_alert_v2"
+    private const val CH_NUDGE_SOUND = "nextick_nudge_sound_v2"
 
     const val ID_ONGOING = 4100
     const val ID_RING = 4101
@@ -32,38 +37,69 @@ object Notifier {
     fun ensureChannels(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
         val loc = ctx.localised()
+        val sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val audio = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
+        // Clean up channel IDs used by the first build. Android channel sound/vibration
+        // properties are immutable after creation, so reusing those IDs would stay silent.
+        listOf("nextick_ring_haptic", "nextick_ring_silent", "nextick_nudge").forEach {
+            runCatching { nm.deleteNotificationChannel(it) }
+        }
 
         nm.createNotificationChannel(
             NotificationChannel(
-                CH_ONGOING, loc.getString(R.string.channel_ongoing),
+                CH_ONGOING,
+                loc.getString(R.string.channel_ongoing),
                 NotificationManager.IMPORTANCE_LOW
-            ).apply { setShowBadge(false) }
+            ).apply {
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
+            }
         )
+
         nm.createNotificationChannel(
             NotificationChannel(
-                CH_RING_HAPTIC, loc.getString(R.string.channel_ring),
-                NotificationManager.IMPORTANCE_DEFAULT
+                CH_RING_ALERT,
+                loc.getString(R.string.channel_ring),
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                setSound(null, null)
+                setSound(sound, audio)
                 enableVibration(true)
-                vibrationPattern = longArrayOf(0, 120, 80, 120)
+                vibrationPattern = longArrayOf(0, 250, 120, 250)
             }
         )
         nm.createNotificationChannel(
             NotificationChannel(
-                CH_RING_SILENT, loc.getString(R.string.channel_ring),
-                NotificationManager.IMPORTANCE_DEFAULT
+                CH_RING_SOUND,
+                loc.getString(R.string.channel_ring),
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                setSound(null, null)
+                setSound(sound, audio)
                 enableVibration(false)
             }
         )
         nm.createNotificationChannel(
             NotificationChannel(
-                CH_NUDGE, loc.getString(R.string.channel_nudge),
+                CH_NUDGE_ALERT,
+                loc.getString(R.string.channel_nudge),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                setSound(null, null)
+                setSound(sound, audio)
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 180, 100, 180)
+            }
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CH_NUDGE_SOUND,
+                loc.getString(R.string.channel_nudge),
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                setSound(sound, audio)
                 enableVibration(false)
             }
         )
@@ -100,42 +136,44 @@ object Notifier {
     }
 
     fun ring(ctx: Context) {
-        if (AppVisibility.visible) {
-            pulse(ctx)
-            return
-        }
         val loc = ctx.localised()
-        val channel = if (Store.vibration) CH_RING_HAPTIC else CH_RING_SILENT
+        val channel = if (Store.vibration) CH_RING_ALERT else CH_RING_SOUND
         val b = NotificationCompat.Builder(ctx, channel)
             .setSmallIcon(R.drawable.ic_clock)
             .setContentTitle(loc.getString(R.string.notif_ring_title))
             .setContentText(loc.getString(R.string.notif_ring_body))
             .setContentIntent(openApp(ctx))
             .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOnlyAlertOnce(false)
             .addAction(
                 R.drawable.ic_clock,
                 loc.getString(R.string.action_dismiss),
                 openApp(ctx)
             )
-        if (Store.vibration) b.setVibrate(longArrayOf(0, 120, 80, 120))
+
+        if (Store.vibration) {
+            b.setVibrate(longArrayOf(0, 250, 120, 250))
+        }
         runCatching { NotificationManagerCompat.from(ctx).notify(ID_RING, b.build()) }
-        pulse(ctx)
     }
 
     fun nudge(ctx: Context) {
-        if (AppVisibility.visible) return
         val loc = ctx.localised()
-        val b = NotificationCompat.Builder(ctx, CH_NUDGE)
+        val channel = if (Store.vibration) CH_NUDGE_ALERT else CH_NUDGE_SOUND
+        val b = NotificationCompat.Builder(ctx, channel)
             .setSmallIcon(R.drawable.ic_clock)
             .setContentTitle(loc.getString(R.string.notif_nudge_title))
             .setContentText(loc.getString(R.string.notif_nudge_body))
             .setContentIntent(openApp(ctx))
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setOnlyAlertOnce(false)
+        if (Store.vibration) {
+            b.setVibrate(longArrayOf(0, 180, 100, 180))
+        }
         runCatching { NotificationManagerCompat.from(ctx).notify(ID_NUDGE, b.build()) }
     }
 
@@ -169,7 +207,9 @@ object Notifier {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         return PendingIntent.getActivity(
-            ctx, 0, intent,
+            ctx,
+            0,
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
