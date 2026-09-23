@@ -1,5 +1,7 @@
 package com.nextick.app.ui
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
 import android.view.LayoutInflater
@@ -171,6 +173,21 @@ class SettingsFragment : Fragment() {
             Notifier.tap(ctx)
             checkUpdate()
         }
+
+        binding.btnOpenDownload.setOnClickListener {
+            Notifier.tap(ctx)
+            openDownloadPage()
+        }
+    }
+
+    private fun openDownloadPage() {
+        val url = UpdateChecker.releasesUrl(BuildConfig.GITHUB_REPO)
+        startActivity(
+            Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse(url)
+            )
+        )
     }
 
     private fun updateIntervalButtons() {
@@ -233,9 +250,9 @@ class SettingsFragment : Fragment() {
                         .setPositiveButton(R.string.update_open) { _, _ ->
                             Notifier.confirm(requireContext())
                             startActivity(
-                                android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW,
-                                    android.net.Uri.parse(info.url)
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse(info.url)
                                 )
                             )
                         }
@@ -250,6 +267,14 @@ class SettingsFragment : Fragment() {
             }.onFailure {
                 binding.updateStatus.text = getString(R.string.update_error)
                 Notifier.warning(requireContext())
+
+                MaterialAlertDialogBuilder(requireContext())
+                    .setMessage(R.string.update_error_fallback)
+                    .setPositiveButton(R.string.open_download_page) { _, _ ->
+                        openDownloadPage()
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
             }
         }
     }

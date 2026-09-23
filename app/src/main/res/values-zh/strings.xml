@@ -38,6 +38,9 @@
     <string name="total_label">总计 %1$s</string>
     <string name="timeline">时间轴</string>
     <string name="empty_today">今天还没有记录</string>
+    <string name="empty_day">这一天还没有记录</string>
+    <string name="stats_yesterday">昨天</string>
+    <string name="stats_tomorrow">明天</string>
     <string name="switched">已切换</string>
     <string name="same_task">同一件事</string>
     <string name="appearance">显示效果</string>
@@ -73,7 +76,9 @@
     <string name="update_checking">正在检查…</string>
     <string name="update_none">已是最新版本</string>
     <string name="update_found">发现新版本 %1$s</string>
-    <string name="update_error">检查失败，请稍后再试</string>
+    <string name="update_error">检查更新失败</string>
+    <string name="update_error_fallback">自动检查失败，可以改为从浏览器打开 GitHub 下载页面。</string>
+    <string name="open_download_page">浏览器打开下载页</string>
     <string name="update_open">去下载</string>
     <string name="notif_ring_title">时间到</string>
     <string name="notif_ring_body">要不要切换到下一件事？</string>
@@ -89,6 +94,6 @@
     <string name="export_success">数据已导出</string>
     <string name="export_error">导出失败</string>
     <string name="delete_session_title">删除这条记录？</string>
-    <string name="delete_session_message">%1$s · %2$s · %3$s\n对应的时间和积分也会从今日统计中删除。</string>
+    <string name="delete_session_message">%1$s · %2$s · %3$s\n对应的时间和积分也会从这一天的统计中删除。</string>
     <string name="delete_session_confirm">删除</string>
 </resources>

@@ -98,7 +98,7 @@ class HomeFragment : Fragment() {
         val ctx = requireContext()
         val tags = Store.tags()
 
-        binding.tagGroup.removeAllViews()
+        binding.tagRows.removeAllViews()
         chips.clear()
 
         if (selectedTag == null || tags.none { it.id == selectedTag }) {
@@ -107,21 +107,46 @@ class HomeFragment : Fragment() {
                 else tags.firstOrNull()?.id
         }
 
-        tags.forEach { tag ->
-            val chip = Chip(ctx).apply {
-                id = View.generateViewId()
-                text = TagNames.of(ctx, tag.nameKey, tag.name)
-                isCheckable = true
-                isChecked = tag.id == selectedTag
-                chipIcon = circle(tag.color)
-                isChipIconVisible = true
-                setOnClickListener {
-                    selectedTag = tag.id
-                    Notifier.tap(ctx)
-                }
+        tags.chunked(4).forEach { group ->
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
             }
-            binding.tagGroup.addView(chip)
-            chips.add(chip)
+            binding.tagRows.addView(row)
+
+            group.forEach { tag ->
+                val chip = Chip(ctx).apply {
+                    id = View.generateViewId()
+                    text = TagNames.of(ctx, tag.nameKey, tag.name)
+                    isCheckable = true
+                    isChecked = tag.id == selectedTag
+                    isChipIconVisible = true
+                    chipIcon = circle(tag.color)
+                    textSize = 15f
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setOnClickListener {
+                        selectedTag = tag.id
+                        chips.forEach { it.isChecked = it === this }
+                        Notifier.tap(ctx)
+                    }
+                }
+                row.addView(
+                    chip,
+                    LinearLayout.LayoutParams(0, ctx.dp(50), 1f).apply {
+                        setMargins(ctx.dp(3), ctx.dp(3), ctx.dp(3), ctx.dp(3))
+                    }
+                )
+                chips.add(chip)
+            }
+
+            repeat(4 - group.size) {
+                row.addView(
+                    Space(ctx),
+                    LinearLayout.LayoutParams(0, ctx.dp(50), 1f).apply {
+                        setMargins(ctx.dp(3), ctx.dp(3), ctx.dp(3), ctx.dp(3))
+                    }
+                )
+            }
         }
     }
 
@@ -132,10 +157,7 @@ class HomeFragment : Fragment() {
         binding.durationRows.removeAllViews()
         durationButtons.clear()
 
-        val durations = Store.durations()
-        val rows = durations.chunked(4)
-
-        rows.forEach { group ->
+        Store.durations().chunked(4).forEach { group ->
             val row = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
             }
@@ -152,14 +174,6 @@ class HomeFragment : Fragment() {
                     isAllCaps = false
                     setPadding(0, 0, 0, 0)
                     isEnabled = TimerCore.phase != TimerCore.Phase.RUNNING
-                    layoutParams = LinearLayout.LayoutParams(
-                        0,
-                        ctx.dp(52),
-                        1f
-                    ).apply {
-                        setMargins(ctx.dp(4), ctx.dp(4), ctx.dp(4), ctx.dp(4))
-                    }
-
                     setOnClickListener {
                         val sel = selectedTag
                         if (TimerCore.phase == TimerCore.Phase.RUNNING) {
@@ -174,7 +188,12 @@ class HomeFragment : Fragment() {
                         confirmAndStart(sel, min)
                     }
                 }
-                row.addView(button)
+                row.addView(
+                    button,
+                    LinearLayout.LayoutParams(0, ctx.dp(52), 1f).apply {
+                        setMargins(ctx.dp(4), ctx.dp(4), ctx.dp(4), ctx.dp(4))
+                    }
+                )
                 durationButtons.add(button)
             }
 
@@ -191,7 +210,6 @@ class HomeFragment : Fragment() {
 
     private fun confirmAndStart(tagId: String, minutes: Int) {
         val ctx = requireContext()
-
         if (TimerCore.phase == TimerCore.Phase.RUNNING) {
             Notifier.warning(ctx)
             return
@@ -233,18 +251,15 @@ class HomeFragment : Fragment() {
             TimerCore.Phase.RUNNING -> {
                 val remain = TimerCore.remainingMillis
                 val totalMs = TimerCore.plannedSeconds * 1000L
-
                 binding.timerTag.text = TimerCore.tagName
                 binding.timerText.text = Format.clock(remain)
                 binding.progress.progress =
                     if (totalMs > 0) ((totalMs - remain) * 100 / totalMs).toInt() else 0
-
                 binding.timerState.visibility = View.VISIBLE
                 binding.timerState.text = getString(
                     R.string.state_running,
                     Format.minutes(ctx, TimerCore.plannedSeconds / 60)
                 )
-
                 binding.btnFinish.visibility = View.VISIBLE
                 binding.btnDismiss.visibility = View.GONE
             }
@@ -253,23 +268,19 @@ class HomeFragment : Fragment() {
                 binding.timerTag.text = TimerCore.tagName
                 binding.timerText.text = Format.clock(0)
                 binding.progress.progress = 100
-
                 binding.timerState.visibility = View.VISIBLE
                 binding.timerState.text = getString(R.string.state_ringing)
-
                 binding.btnFinish.visibility = View.GONE
                 binding.btnDismiss.visibility = View.VISIBLE
             }
 
             TimerCore.Phase.IDLE -> {
                 val tag = selectedTag?.let { Store.tag(it) }
-
                 binding.timerTag.text =
                     tag?.let { TagNames.of(ctx, it.nameKey, it.name) } ?: "—"
                 binding.timerText.text = "--:--"
                 binding.progress.progress = 0
                 binding.timerState.visibility = View.GONE
-
                 binding.btnFinish.visibility = View.GONE
                 binding.btnDismiss.visibility = View.GONE
             }

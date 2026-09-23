@@ -15,10 +15,21 @@ import com.nextick.app.data.Store
 import com.nextick.app.data.TagNames
 import com.nextick.app.databinding.FragmentStatsBinding
 import com.nextick.app.databinding.ItemSessionBinding
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class StatsFragment : Fragment() {
     private var _binding: FragmentStatsBinding? = null
     private val binding get() = _binding!!
+
+    private val selectedDay = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 12)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -31,9 +42,29 @@ class StatsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         binding.pie.setOnClickListener {
             Notifier.tap(requireContext())
         }
+
+        binding.btnPrevDay.setOnClickListener {
+            Notifier.tap(requireContext())
+            selectedDay.add(Calendar.DAY_OF_YEAR, -1)
+            refresh()
+        }
+
+        binding.btnNextDay.setOnClickListener {
+            Notifier.tap(requireContext())
+            selectedDay.add(Calendar.DAY_OF_YEAR, 1)
+            refresh()
+        }
+
+        binding.dateLabel.setOnClickListener {
+            Notifier.confirm(requireContext())
+            goToday()
+            refresh()
+        }
+
         refresh()
     }
 
@@ -52,12 +83,32 @@ class StatsFragment : Fragment() {
         super.onDestroyView()
     }
 
+    private fun goToday() {
+        val now = Calendar.getInstance()
+        selectedDay.set(
+            now.get(Calendar.YEAR),
+            now.get(Calendar.MONTH),
+            now.get(Calendar.DAY_OF_MONTH),
+            12,
+            0,
+            0
+        )
+        selectedDay.set(Calendar.MILLISECOND, 0)
+    }
+
+    private fun selectedKey(): String =
+        SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            .format(Date(selectedDay.timeInMillis))
+
     private fun refresh() {
         if (_binding == null) return
         val ctx = requireContext()
+        val key = selectedKey()
+
+        binding.dateLabel.text = dayLabel()
 
         val sessions =
-            Store.sessionsOfDay(Store.todayKey())
+            Store.sessionsOfDay(key)
                 .sortedByDescending { it.startAt }
 
         val groups = LinkedHashMap<String, PieChartView.Slice>()
@@ -71,14 +122,12 @@ class StatsFragment : Fragment() {
             )
         }
 
-        val slices =
-            groups.values.sortedByDescending { it.minutes }
-
+        val slices = groups.values.sortedByDescending { it.minutes }
         val total = slices.sumOf { it.minutes }
 
         binding.pie.slices = slices
         binding.pie.centerPrimary = Format.minutes(ctx, total)
-        binding.pie.centerSecondary = getString(R.string.stats_today)
+        binding.pie.centerSecondary = relativeDayName()
 
         binding.timelineList.removeAllViews()
 
@@ -108,8 +157,7 @@ class StatsFragment : Fragment() {
             row.colorDot.background = circle(session.tagColor)
 
             val points = session.points
-            row.points.text =
-                points?.let { Format.points(it) } ?: "-"
+            row.points.text = points?.let { Format.points(it) } ?: "-"
 
             row.points.setTextColor(
                 ContextCompat.getColor(
@@ -132,6 +180,35 @@ class StatsFragment : Fragment() {
 
         binding.emptyText.visibility =
             if (sessions.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    private fun dayLabel(): String {
+        val date = SimpleDateFormat("MM-dd", Locale.getDefault())
+            .format(Date(selectedDay.timeInMillis))
+        return date + " " + relativeDayName()
+    }
+
+    private fun relativeDayName(): String {
+        val selected = dayNumber(selectedDay.timeInMillis)
+        val today = dayNumber(System.currentTimeMillis())
+        return when (selected - today) {
+            -1L -> getString(R.string.stats_yesterday)
+            0L -> getString(R.string.stats_today)
+            1L -> getString(R.string.stats_tomorrow)
+            else -> SimpleDateFormat("MM-dd", Locale.getDefault())
+                .format(Date(selectedDay.timeInMillis))
+        }
+    }
+
+    private fun dayNumber(time: Long): Long {
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = time
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        return cal.timeInMillis / 86_400_000L
     }
 
     private fun confirmDelete(session: Session) {

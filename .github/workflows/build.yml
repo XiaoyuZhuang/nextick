@@ -11,8 +11,9 @@ permissions:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Build signed APK
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,19 +24,27 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # 不需要 gradle wrapper 的 jar，直接由 Action 安装 Gradle
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(grep -m1 'versionName = ' app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Build
         run: gradle assembleDebug --stacktrace
 
       - name: Pack APK
+        shell: bash
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/debug/app-debug.apk "out/NextTick-${GITHUB_REF_NAME}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "out/NextTick-v${{ steps.version.outputs.version }}.apk"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -43,8 +52,16 @@ jobs:
           name: NextTick-apk
           path: out/*.apk
 
-      - name: Attach to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: out/*.apk
+      - name: Create or update GitHub Release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/*.apk --clobber
+          else
+            gh release create "$TAG" out/*.apk               --target "$GITHUB_SHA"               --title "NextTick $TAG"               --notes "Signed Android APK for NextTick $TAG."
+          fi

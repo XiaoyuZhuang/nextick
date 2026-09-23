@@ -38,6 +38,9 @@
     <string name="total_label">Total %1$s</string>
     <string name="timeline">Timeline</string>
     <string name="empty_today">No records yet today</string>
+    <string name="empty_day">No records for this day</string>
+    <string name="stats_yesterday">Yesterday</string>
+    <string name="stats_tomorrow">Tomorrow</string>
     <string name="switched">Switched</string>
     <string name="same_task">Same task</string>
     <string name="appearance">Appearance</string>
@@ -73,7 +76,9 @@
     <string name="update_checking">Checking…</string>
     <string name="update_none">You are on the latest version</string>
     <string name="update_found">New version available: %1$s</string>
-    <string name="update_error">Could not check. Try again later.</string>
+    <string name="update_error">Update check failed</string>
+    <string name="update_error_fallback">Automatic update check failed. You can open the GitHub download page in your browser instead.</string>
+    <string name="open_download_page">Open download page</string>
     <string name="update_open">Download</string>
     <string name="notif_ring_title">Time is up</string>
     <string name="notif_ring_body">Ready to switch to the next thing?</string>
@@ -89,6 +94,6 @@
     <string name="export_success">Data exported</string>
     <string name="export_error">Export failed</string>
     <string name="delete_session_title">Delete this record?</string>
-    <string name="delete_session_message">%1$s · %2$s · %3$s\nIts time and points will also be removed from today’s statistics.</string>
+    <string name="delete_session_message">%1$s · %2$s · %3$s\nIts time and points will also be removed from that day’s statistics.</string>
     <string name="delete_session_confirm">Delete</string>
 </resources>

@@ -86,6 +86,7 @@ class PieChartView @JvmOverloads constructor(
         val radius = size * 0.245f
         val stroke = size * 0.125f
         val outer = radius + stroke / 2f
+        val inner = radius - stroke / 2f
 
         val oval = RectF(
             cx - radius,
@@ -117,33 +118,60 @@ class PieChartView @JvmOverloads constructor(
                         slice = slice,
                         angle = mid,
                         right = right,
-                        y = cy + sin(rad).toFloat() * (outer + dp(18f))
+                        y = cy + sin(rad).toFloat() * (outer + dp(16f))
                     )
                 )
                 start += sweep
             }
         }
 
-        titlePaint.textSize = size * 0.115f
-        titlePaint.color = ContextCompat.getColor(context, R.color.text_primary)
+        drawCenter(canvas, cx, cy, size, inner)
+        drawLabels(canvas, labels, cx, cy, outer)
+    }
+
+    private fun drawCenter(
+        canvas: Canvas,
+        cx: Float,
+        cy: Float,
+        size: Float,
+        innerRadius: Float
+    ) {
+        titlePaint.color =
+            ContextCompat.getColor(context, R.color.text_primary)
+
+        var textSize = size * 0.082f
+        titlePaint.textSize = textSize
+
+        val maxWidth = innerRadius * 1.58f
+        while (
+            titlePaint.measureText(centerPrimary) > maxWidth &&
+            textSize > dp(17f)
+        ) {
+            textSize -= dp(1f)
+            titlePaint.textSize = textSize
+        }
+
         val fm = titlePaint.fontMetrics
+        val titleY =
+            cy - (fm.ascent + fm.descent) / 2f - size * 0.022f
+
         canvas.drawText(
             centerPrimary,
             cx,
-            cy - (fm.ascent + fm.descent) / 2f,
+            titleY,
             titlePaint
         )
 
-        subPaint.textSize = size * 0.05f
-        subPaint.color = ContextCompat.getColor(context, R.color.text_secondary)
+        subPaint.textSize = size * 0.042f
+        subPaint.color =
+            ContextCompat.getColor(context, R.color.text_secondary)
+
         canvas.drawText(
             centerSecondary,
             cx,
-            cy + size * 0.105f,
+            cy + size * 0.085f,
             subPaint
         )
-
-        drawLabels(canvas, labels, cx, cy, outer)
     }
 
     private fun drawLabels(
@@ -157,8 +185,10 @@ class PieChartView @JvmOverloads constructor(
         val maxY = height - dp(14f)
         val gap = dp(23f)
 
-        val left = labels.filter { !it.right }.sortedBy { it.y }.toMutableList()
-        val right = labels.filter { it.right }.sortedBy { it.y }.toMutableList()
+        val left =
+            labels.filter { !it.right }.sortedBy { it.y }.toMutableList()
+        val right =
+            labels.filter { it.right }.sortedBy { it.y }.toMutableList()
 
         adjust(left, minY, maxY, gap)
         adjust(right, minY, maxY, gap)
@@ -167,9 +197,6 @@ class PieChartView @JvmOverloads constructor(
             val rad = Math.toRadians(entry.angle.toDouble())
             val sx = cx + cos(rad).toFloat() * outer
             val sy = cy + sin(rad).toFloat() * outer
-
-            val elbowX =
-                cx + if (entry.right) outer + dp(14f) else -(outer + dp(14f))
 
             val text = buildString {
                 append(entry.slice.label)
@@ -180,31 +207,41 @@ class PieChartView @JvmOverloads constructor(
             labelPaint.color =
                 ContextCompat.getColor(context, R.color.text_primary)
 
-            if (entry.right) {
-                labelPaint.textAlign = Paint.Align.RIGHT
-            } else {
-                labelPaint.textAlign = Paint.Align.LEFT
-            }
+            labelPaint.textAlign =
+                if (entry.right) Paint.Align.RIGHT else Paint.Align.LEFT
 
-            val labelX = if (entry.right) {
-                width - dp(8f)
-            } else {
-                dp(8f)
-            }
+            val labelX =
+                if (entry.right) width - dp(8f) else dp(8f)
 
             val textWidth = labelPaint.measureText(text)
-            val lineEndX = if (entry.right) {
-                labelX - textWidth - dp(5f)
-            } else {
-                labelX + textWidth + dp(5f)
-            }
+            val lineEndX =
+                if (entry.right) {
+                    labelX - textWidth - dp(5f)
+                } else {
+                    labelX + textWidth + dp(5f)
+                }
 
             linePaint.color = entry.slice.color.toInt()
-            canvas.drawLine(sx, sy, elbowX, entry.y, linePaint)
-            canvas.drawLine(elbowX, entry.y, lineEndX, entry.y, linePaint)
 
-            val baseline = entry.y - (labelPaint.ascent() + labelPaint.descent()) / 2f
-            canvas.drawText(text, labelX, baseline, labelPaint)
+            // One clean straight leader line; no elbow/bend.
+            canvas.drawLine(
+                sx,
+                sy,
+                lineEndX,
+                entry.y,
+                linePaint
+            )
+
+            val baseline =
+                entry.y -
+                    (labelPaint.ascent() + labelPaint.descent()) / 2f
+
+            canvas.drawText(
+                text,
+                labelX,
+                baseline,
+                labelPaint
+            )
         }
     }
 
