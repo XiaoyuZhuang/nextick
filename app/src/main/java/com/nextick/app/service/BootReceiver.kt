@@ -11,6 +11,6 @@ class BootReceiver : BroadcastReceiver() {
         TimerCore.init(context)
         TimerCore.tick()
         AlarmPlanner.planNext(context)
-        runCatching { TimerService.start(context) }
+        runCatching { TimerService.sync(context) }
     }
 }
