@@ -23,6 +23,7 @@ object Store {
         sp = context.applicationContext.getSharedPreferences("nextick_data", Context.MODE_PRIVATE)
         if (!sp.contains(KEY_TAGS)) writeTags(defaultTags())
         if (!sp.contains(KEY_DURATIONS)) saveDurations(defaultDurations())
+        repairHistoricalScores()
     }
 
     fun dayOf(ts: Long): String =
@@ -125,22 +126,74 @@ object Store {
         writeSessions(list)
     }
 
-    fun settle(id: String, points: Double, switched: Boolean) {
+    fun settleLatestForNextTag(nextTagId: String) {
         val list = sessions()
-        val index = list.indexOfFirst { it.id == id }
-        if (index >= 0) {
-            list[index].points = points
-            list[index].switched = switched
-            writeSessions(list)
+        if (list.isEmpty()) return
+
+        var changed = repairHistoricalScoresInMemory(list)
+
+        val last = list.last()
+        if (last.points == null || kotlin.math.abs(last.points ?: 0.0) < 1e-9) {
+            val switched = last.tagId != nextTagId
+            val base = last.previewScore()
+            last.points = if (switched) base else -base
+            last.switched = switched
+            changed = true
         }
+
+        if (changed) {
+            writeSessions(list)
+            rebuildPointsFromSessions(list)
+        }
+    }
+
+    private fun repairHistoricalScores() {
+        val list = sessions()
+        if (repairHistoricalScoresInMemory(list)) {
+            writeSessions(list)
+            rebuildPointsFromSessions(list)
+        }
+    }
+
+    private fun repairHistoricalScoresInMemory(list: MutableList<Session>): Boolean {
+        if (list.size < 2) return false
+        var changed = false
+
+        for (i in 0 until list.lastIndex) {
+            val current = list[i]
+            val next = list[i + 1]
+
+            if (current.points == null || kotlin.math.abs(current.points ?: 0.0) < 1e-9) {
+                val switched = current.tagId != next.tagId
+                val base = current.previewScore()
+                current.points = if (switched) base else -base
+                current.switched = switched
+                changed = true
+            }
+        }
+
+        return changed
     }
 
     fun deleteSession(id: String): Boolean {
         val list = sessions()
         val removed = list.firstOrNull { it.id == id } ?: return false
         list.removeAll { it.id == id }
+
+        // Deleting a record changes the transition between its neighbours.
+        // Recompute every transition that has a recorded next session.
+        for (i in 0 until list.lastIndex) {
+            val current = list[i]
+            val next = list[i + 1]
+            val switched = current.tagId != next.tagId
+            val base = current.previewScore()
+            current.points = if (switched) base else -base
+            current.switched = switched
+        }
+
         writeSessions(list)
         rebuildPointsFromSessions(list)
+
         if (lastTagId == removed.tagId && list.none { it.tagId == removed.tagId }) {
             lastTagId = ""
         }

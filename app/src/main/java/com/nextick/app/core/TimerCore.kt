@@ -53,7 +53,7 @@ object TimerCore {
         if (phase == Phase.RUNNING) return
 
         val tag = Store.tag(tagId) ?: return
-        settle(tagId)
+        Store.settleLatestForNextTag(tagId)
 
         val now = System.currentTimeMillis()
         this.tagId = tag.id
@@ -177,18 +177,6 @@ object TimerCore {
                 completed = completed
             )
         )
-    }
-
-    private fun settle(newTagId: String) {
-        val pending = Store.sessions().filter { it.points == null }
-        if (pending.isEmpty()) return
-        pending.dropLast(1).forEach { Store.settle(it.id, 0.0, false) }
-        val last = pending.last()
-        val switched = last.tagId != newTagId
-        val base = last.previewScore()
-        val delta = if (switched) base else -base
-        Store.settle(last.id, delta, switched)
-        Store.addPoints(Store.dayOf(last.endAt), delta)
     }
 
     private fun commit(ctx: Context) {
