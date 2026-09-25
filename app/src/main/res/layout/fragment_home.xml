@@ -28,15 +28,29 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
 
-                <TextView
-                    android:id="@+id/pointsLabel"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/points_today"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/pointsLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/points_today"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/pointsDelta"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/pointsValue"

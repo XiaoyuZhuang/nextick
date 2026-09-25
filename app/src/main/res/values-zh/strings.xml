@@ -4,7 +4,7 @@
     <string name="tab_home">首页</string>
     <string name="tab_stats">统计</string>
     <string name="tab_settings">设置</string>
-    <string name="points_today">累计积分</string>
+    <string name="points_today">今日累计积分</string>
     <string name="points_rule">计时结束后切换到别的事情，按上一段时长得分（每 10 分钟 1 分）；继续同一件事则扣掉同样的分数。</string>
     <string name="section_tags">标签</string>
     <string name="section_duration">时长</string>
@@ -96,4 +96,16 @@
     <string name="delete_session_title">删除这条记录？</string>
     <string name="delete_session_message">%1$s · %2$s · %3$s\n对应的时间和积分也会从这一天的统计中删除。</string>
     <string name="delete_session_confirm">删除</string>
+    <string name="points_total">总累计积分</string>
+    <string name="points_vs_yesterday_up">比昨天高 %1$s</string>
+    <string name="points_vs_yesterday_down">比昨天低 %1$s</string>
+    <string name="points_vs_yesterday_same">与昨天持平</string>
+    <string name="reminder_active_window">生效时间段</string>
+    <string name="reminder_active_window_desc">每天仅在该时段提醒；起止相同表示全天生效</string>
+    <string name="reminder_inactive_title">当前提醒未生效</string>
+    <string name="reminder_inactive_master">提醒总开关当前关闭。是否打开提醒后开始这次倒计时？</string>
+    <string name="reminder_inactive_window">当前不在每日提醒生效时间段内。是否仅为本次倒计时临时开启提醒？</string>
+    <string name="reminder_inactive_both">提醒总开关已关闭，并且当前不在生效时间段内。是否打开总开关，并仅为本次倒计时临时开启提醒？</string>
+    <string name="enable_reminder_and_continue">开启提醒</string>
+    <string name="start_without_reminder">不提醒，仍然开始</string>
 </resources>

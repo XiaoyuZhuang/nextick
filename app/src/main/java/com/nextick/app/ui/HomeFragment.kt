@@ -20,6 +20,7 @@ import com.nextick.app.data.Store
 import com.nextick.app.data.TagNames
 import com.nextick.app.databinding.FragmentHomeBinding
 import com.nextick.app.service.TimerService
+import kotlin.math.abs
 
 class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
@@ -123,9 +124,6 @@ class HomeFragment : Fragment() {
                     isChecked = tag.id == selectedTag
                     isChipIconVisible = true
                     chipIcon = circle(tag.color)
-
-                    // Keep the color marker deliberately small so a four-column
-                    // layout still has enough room for the tag text.
                     chipIconSize = ctx.dp(14).toFloat()
                     chipStartPadding = ctx.dp(6).toFloat()
                     iconStartPadding = 0f
@@ -134,10 +132,7 @@ class HomeFragment : Fragment() {
                     textEndPadding = 0f
                     chipEndPadding = ctx.dp(6).toFloat()
                     chipMinHeight = ctx.dp(42).toFloat()
-
-                    setTextColor(
-                        ContextCompat.getColor(ctx, R.color.text_primary)
-                    )
+                    setTextColor(ContextCompat.getColor(ctx, R.color.text_primary))
                     textSize = 14f
                     maxLines = 1
                     ellipsize = TextUtils.TruncateAt.END
@@ -204,7 +199,7 @@ class HomeFragment : Fragment() {
                             return@setOnClickListener
                         }
                         Notifier.tap(ctx)
-                        confirmAndStart(sel, min)
+                        requestStart(sel, min)
                     }
                 }
                 row.addView(
@@ -227,13 +222,64 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun confirmAndStart(tagId: String, minutes: Int) {
+    private fun requestStart(tagId: String, minutes: Int) {
         val ctx = requireContext()
         if (TimerCore.phase == TimerCore.Phase.RUNNING) {
             Notifier.warning(ctx)
             return
         }
 
+        val masterOff = !Store.remindersEnabled
+        val outsideWindow = !Store.isWithinReminderWindow()
+
+        if (!masterOff && !outsideWindow) {
+            confirmSameTaskAndStart(tagId, minutes, reminderOverride = false)
+            return
+        }
+
+        val messageRes = when {
+            masterOff && outsideWindow -> R.string.reminder_inactive_both
+            masterOff -> R.string.reminder_inactive_master
+            else -> R.string.reminder_inactive_window
+        }
+
+        Notifier.warning(ctx)
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(R.string.reminder_inactive_title)
+            .setMessage(messageRes)
+            .setNegativeButton(R.string.start_without_reminder) { _, _ ->
+                Notifier.tap(ctx)
+                confirmSameTaskAndStart(
+                    tagId,
+                    minutes,
+                    reminderOverride = false
+                )
+            }
+            .setPositiveButton(R.string.enable_reminder_and_continue) { _, _ ->
+                Notifier.confirm(ctx)
+
+                if (!Store.remindersEnabled) {
+                    Store.remindersEnabled = true
+                    TimerCore.reminderPolicyChanged(true)
+                }
+
+                // Outside the normal daily window, allow reminders only for this
+                // countdown and its time-up ringing. The saved daily window is unchanged.
+                confirmSameTaskAndStart(
+                    tagId,
+                    minutes,
+                    reminderOverride = outsideWindow
+                )
+            }
+            .show()
+    }
+
+    private fun confirmSameTaskAndStart(
+        tagId: String,
+        minutes: Int,
+        reminderOverride: Boolean
+    ) {
+        val ctx = requireContext()
         val pending = Store.lastUnsettled()
 
         if (pending != null && pending.tagId == tagId) {
@@ -247,13 +293,21 @@ class HomeFragment : Fragment() {
                 }
                 .setPositiveButton(R.string.continue_and_deduct) { _, _ ->
                     Notifier.confirm(ctx)
-                    TimerCore.startSession(tagId, minutes)
+                    TimerCore.startSession(
+                        tagId,
+                        minutes,
+                        reminderOverride = reminderOverride
+                    )
                     TimerService.sync(ctx)
                 }
                 .show()
         } else {
             Notifier.confirm(ctx)
-            TimerCore.startSession(tagId, minutes)
+            TimerCore.startSession(
+                tagId,
+                minutes,
+                reminderOverride = reminderOverride
+            )
             TimerService.sync(ctx)
         }
     }
@@ -261,7 +315,38 @@ class HomeFragment : Fragment() {
     private fun render() {
         if (_binding == null) return
         val ctx = requireContext()
-        binding.pointsValue.text = Format.total(Store.totalPoints())
+
+        val todayPoints = Store.pointsFor(Store.todayKey())
+        val yesterdayPoints = Store.pointsFor(Store.yesterdayKey())
+        val delta = todayPoints - yesterdayPoints
+
+        binding.pointsValue.text = Format.total(todayPoints)
+        when {
+            delta > 0.049 -> {
+                binding.pointsDelta.text = getString(
+                    R.string.points_vs_yesterday_up,
+                    Format.total(abs(delta))
+                )
+                binding.pointsDelta.setTextColor(
+                    ContextCompat.getColor(ctx, R.color.positive)
+                )
+            }
+            delta < -0.049 -> {
+                binding.pointsDelta.text = getString(
+                    R.string.points_vs_yesterday_down,
+                    Format.total(abs(delta))
+                )
+                binding.pointsDelta.setTextColor(
+                    ContextCompat.getColor(ctx, R.color.negative)
+                )
+            }
+            else -> {
+                binding.pointsDelta.text = getString(R.string.points_vs_yesterday_same)
+                binding.pointsDelta.setTextColor(
+                    ContextCompat.getColor(ctx, R.color.text_secondary)
+                )
+            }
+        }
 
         val running = TimerCore.phase == TimerCore.Phase.RUNNING
         durationButtons.forEach { it.isEnabled = !running }

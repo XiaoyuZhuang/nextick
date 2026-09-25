@@ -1,5 +1,6 @@
 package com.nextick.app.ui
 
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -130,6 +131,16 @@ class SettingsFragment : Fragment() {
             TimerService.sync(ctx)
         }
 
+        updateReminderWindowButtons()
+        binding.btnWindowStart.setOnClickListener {
+            Notifier.tap(ctx)
+            pickReminderTime(isStart = true)
+        }
+        binding.btnWindowEnd.setOnClickListener {
+            Notifier.tap(ctx)
+            pickReminderTime(isStart = false)
+        }
+
         updateIntervalButtons()
 
         binding.btnRingInterval.setOnClickListener {
@@ -178,6 +189,50 @@ class SettingsFragment : Fragment() {
             Notifier.tap(ctx)
             openDownloadPage()
         }
+    }
+
+    private fun pickReminderTime(isStart: Boolean) {
+        val ctx = requireContext()
+        val current =
+            if (isStart) Store.reminderWindowStartMinutes
+            else Store.reminderWindowEndMinutes
+
+        TimePickerDialog(
+            ctx,
+            { _, hour, minute ->
+                val value = hour * 60 + minute
+                if (isStart) {
+                    Store.reminderWindowStartMinutes = value
+                } else {
+                    Store.reminderWindowEndMinutes = value
+                }
+
+                Notifier.confirm(ctx)
+                updateReminderWindowButtons()
+                TimerCore.tick()
+                AlarmPlanner.planNext(ctx)
+                TimerService.sync(ctx)
+            },
+            current / 60,
+            current % 60,
+            true
+        ).show()
+    }
+
+    private fun formatTime(minutes: Int): String =
+        String.format(
+            Locale.getDefault(),
+            "%02d:%02d",
+            minutes / 60,
+            minutes % 60
+        )
+
+    private fun updateReminderWindowButtons() {
+        if (_binding == null) return
+        binding.btnWindowStart.text =
+            formatTime(Store.reminderWindowStartMinutes)
+        binding.btnWindowEnd.text =
+            formatTime(Store.reminderWindowEndMinutes)
     }
 
     private fun openDownloadPage() {

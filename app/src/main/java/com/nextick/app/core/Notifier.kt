@@ -135,7 +135,7 @@ object Notifier {
     }
 
     fun ring(ctx: Context) {
-        if (!Store.remindersEnabled) return
+        if (!TimerCore.remindersEffectiveNow()) return
         val loc = ctx.localised()
         val channel = if (Store.vibration) CH_RING_ALERT else CH_RING_SOUND
         val b = NotificationCompat.Builder(ctx, channel)
@@ -159,7 +159,7 @@ object Notifier {
     }
 
     fun nudge(ctx: Context) {
-        if (!Store.remindersEnabled) return
+        if (!Store.remindersEnabled || !Store.isWithinReminderWindow()) return
         val loc = ctx.localised()
         val channel = if (Store.vibration) CH_NUDGE_ALERT else CH_NUDGE_SOUND
         val b = NotificationCompat.Builder(ctx, channel)

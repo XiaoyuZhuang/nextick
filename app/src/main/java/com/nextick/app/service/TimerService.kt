@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import com.nextick.app.core.AlarmPlanner
 import com.nextick.app.core.Notifier
 import com.nextick.app.core.TimerCore
 import com.nextick.app.data.Store
@@ -17,10 +18,18 @@ class TimerService : Service() {
     private val ticker = object : Runnable {
         override fun run() {
             TimerCore.tick()
-            if (!Store.remindersEnabled && TimerCore.phase != TimerCore.Phase.RUNNING) {
+
+            if (
+                TimerCore.phase != TimerCore.Phase.RUNNING &&
+                !TimerCore.remindersEffectiveNow()
+            ) {
+                // Preserve the next scheduled wake-up, but do not keep a foreground
+                // service alive all night outside the reminder window.
+                AlarmPlanner.planNext(this@TimerService)
                 stopSelf()
                 return
             }
+
             Notifier.updateOngoing(this@TimerService)
             handler.postDelayed(this, 1000L)
         }
@@ -54,7 +63,12 @@ class TimerService : Service() {
         fun sync(ctx: Context) {
             Store.init(ctx)
             TimerCore.init(ctx)
-            if (Store.remindersEnabled || TimerCore.phase == TimerCore.Phase.RUNNING) {
+            AlarmPlanner.planNext(ctx)
+
+            if (
+                TimerCore.phase == TimerCore.Phase.RUNNING ||
+                TimerCore.remindersEffectiveNow()
+            ) {
                 start(ctx)
             } else {
                 stop(ctx)

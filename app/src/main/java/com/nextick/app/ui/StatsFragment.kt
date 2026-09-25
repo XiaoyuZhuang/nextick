@@ -106,6 +106,7 @@ class StatsFragment : Fragment() {
         val key = selectedKey()
 
         binding.dateLabel.text = dayLabel()
+        binding.totalPointsValue.text = Format.total(Store.totalPoints())
 
         val sessions =
             Store.sessionsOfDay(key)

@@ -15,19 +15,33 @@ object AlarmPlanner {
         val pi = pending(ctx)
         val now = System.currentTimeMillis()
 
-        if (!Store.remindersEnabled && TimerCore.phase != TimerCore.Phase.RUNNING) {
-            am.cancel(pi)
-            return
-        }
+        val at = when {
+            TimerCore.phase == TimerCore.Phase.RUNNING -> {
+                // Always wake at the end so the session is recorded even when reminders are muted.
+                TimerCore.endAt
+            }
 
-        val at = when (TimerCore.phase) {
-            TimerCore.Phase.RUNNING -> TimerCore.endAt
-            TimerCore.Phase.RINGING ->
+            !Store.remindersEnabled -> {
+                am.cancel(pi)
+                return
+            }
+
+            !TimerCore.remindersEffectiveNow(now) -> {
+                // Sleep outside the daily reminder window, then resume one nudge interval
+                // after the next active window begins.
+                Store.nextReminderWindowStartMillis(now) +
+                    Store.nudgeIntervalSeconds * 1000L
+            }
+
+            TimerCore.phase == TimerCore.Phase.RINGING -> {
                 (TimerCore.lastPingAt + Store.ringIntervalSeconds * 1000L)
                     .coerceAtLeast(now + 2_000L)
-            TimerCore.Phase.IDLE ->
+            }
+
+            else -> {
                 (TimerCore.lastPingAt + Store.nudgeIntervalSeconds * 1000L)
                     .coerceAtLeast(now + 2_000L)
+            }
         }
 
         am.cancel(pi)

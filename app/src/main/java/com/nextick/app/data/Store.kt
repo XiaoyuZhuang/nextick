@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
@@ -30,6 +31,12 @@ object Store {
         SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(ts))
 
     fun todayKey(): String = dayOf(System.currentTimeMillis())
+
+    fun yesterdayKey(): String {
+        val cal = Calendar.getInstance()
+        cal.add(Calendar.DAY_OF_YEAR, -1)
+        return dayOf(cal.timeInMillis)
+    }
 
     private fun defaultTags(): List<Tag> = listOf(
         Tag(UUID.randomUUID().toString(), "", "study", 0xFF118AB2),
@@ -276,6 +283,62 @@ object Store {
         get() = sp.getBoolean("reminders_enabled", true)
         set(value) = sp.edit().putBoolean("reminders_enabled", value).apply()
 
+    var reminderWindowStartMinutes: Int
+        get() = sp.getInt("reminder_window_start_minutes", 7 * 60).coerceIn(0, 1439)
+        set(value) = sp.edit()
+            .putInt("reminder_window_start_minutes", value.coerceIn(0, 1439))
+            .apply()
+
+    var reminderWindowEndMinutes: Int
+        get() = sp.getInt("reminder_window_end_minutes", 23 * 60).coerceIn(0, 1439)
+        set(value) = sp.edit()
+            .putInt("reminder_window_end_minutes", value.coerceIn(0, 1439))
+            .apply()
+
+    fun isWithinReminderWindow(nowMillis: Long = System.currentTimeMillis()): Boolean {
+        val cal = Calendar.getInstance().apply { timeInMillis = nowMillis }
+        val now = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+        val start = reminderWindowStartMinutes
+        val end = reminderWindowEndMinutes
+
+        // Same start/end means reminders are active all day.
+        return when {
+            start == end -> true
+            start < end -> now >= start && now < end
+            else -> now >= start || now < end
+        }
+    }
+
+    fun nextReminderWindowStartMillis(nowMillis: Long = System.currentTimeMillis()): Long {
+        val start = reminderWindowStartMinutes
+        if (reminderWindowStartMinutes == reminderWindowEndMinutes) {
+            return nowMillis
+        }
+
+        val now = Calendar.getInstance().apply { timeInMillis = nowMillis }
+        val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+
+        val target = Calendar.getInstance().apply {
+            timeInMillis = nowMillis
+            set(Calendar.HOUR_OF_DAY, start / 60)
+            set(Calendar.MINUTE, start % 60)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val startIsToday = if (reminderWindowStartMinutes < reminderWindowEndMinutes) {
+            nowMinutes < start
+        } else {
+            // Cross-midnight active window. Outside time is [end, start).
+            nowMinutes < start && nowMinutes >= reminderWindowEndMinutes
+        }
+
+        if (!startIsToday || target.timeInMillis <= nowMillis) {
+            target.add(Calendar.DAY_OF_YEAR, 1)
+        }
+        return target.timeInMillis
+    }
+
     var ringIntervalSeconds: Int
         get() = sp.getInt("ring_interval_seconds", 10).coerceIn(5, 86400)
         set(value) = sp.edit()
@@ -325,6 +388,8 @@ object Store {
             put("language", language)
             put("vibration", vibration)
             put("remindersEnabled", remindersEnabled)
+            put("reminderWindowStartMinutes", reminderWindowStartMinutes)
+            put("reminderWindowEndMinutes", reminderWindowEndMinutes)
             put("ringIntervalSeconds", ringIntervalSeconds)
             put("nudgeIntervalSeconds", nudgeIntervalSeconds)
             put("lastTagId", lastTagId)

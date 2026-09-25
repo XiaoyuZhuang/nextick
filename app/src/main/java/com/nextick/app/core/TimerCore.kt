@@ -26,6 +26,7 @@ object TimerCore {
     var endAt: Long = 0L; private set
     var phaseStartedAt: Long = 0L; private set
     var lastPingAt: Long = 0L; private set
+    var reminderOverrideForSession: Boolean = false; private set
 
     fun init(context: Context) {
         if (app != null) return
@@ -45,11 +46,22 @@ object TimerCore {
     val elapsedMillis: Long
         get() = if (phase == Phase.RUNNING) plannedSeconds * 1000L - remainingMillis else 0L
 
-    fun startSession(tagId: String, minutes: Int) {
+    fun remindersEffectiveNow(nowMillis: Long = System.currentTimeMillis()): Boolean {
+        if (!Store.remindersEnabled) return false
+        val sessionOverride =
+            reminderOverrideForSession &&
+                (phase == Phase.RUNNING || phase == Phase.RINGING)
+        return Store.isWithinReminderWindow(nowMillis) || sessionOverride
+    }
+
+    fun startSession(
+        tagId: String,
+        minutes: Int,
+        reminderOverride: Boolean = false
+    ) {
         val ctx = app ?: return
 
         // A running countdown must never be replaced by an accidental second tap.
-        // To change tasks intentionally, finish the current session first.
         if (phase == Phase.RUNNING) return
 
         val tag = Store.tag(tagId) ?: return
@@ -66,6 +78,7 @@ object TimerCore {
         this.phase = Phase.RUNNING
         this.phaseStartedAt = now
         this.lastPingAt = 0L
+        this.reminderOverrideForSession = reminderOverride
 
         Store.lastTagId = tag.id
         Notifier.cancelRing(ctx)
@@ -80,6 +93,7 @@ object TimerCore {
         phase = Phase.IDLE
         phaseStartedAt = now
         lastPingAt = now
+        reminderOverrideForSession = false
         Notifier.cancelRing(ctx)
         commit(ctx)
     }
@@ -92,6 +106,7 @@ object TimerCore {
         phase = Phase.IDLE
         phaseStartedAt = now
         lastPingAt = now
+        reminderOverrideForSession = false
         commit(ctx)
     }
 
@@ -99,6 +114,7 @@ object TimerCore {
         val ctx = app ?: return
         val now = System.currentTimeMillis()
         if (!enabled) {
+            reminderOverrideForSession = false
             if (phase == Phase.RINGING) phase = Phase.IDLE
             Notifier.cancelRing(ctx)
             Notifier.cancelNudge(ctx)
@@ -115,19 +131,21 @@ object TimerCore {
         val now = System.currentTimeMillis()
         var dirty = false
 
-        if (!Store.remindersEnabled) {
+        if (!remindersEffectiveNow(now)) {
             when (phase) {
                 Phase.RUNNING -> if (now >= endAt) {
                     record(completed = true)
                     phase = Phase.IDLE
                     phaseStartedAt = now
                     lastPingAt = now
+                    reminderOverrideForSession = false
                     dirty = true
                 }
                 Phase.RINGING -> {
                     phase = Phase.IDLE
                     phaseStartedAt = now
                     lastPingAt = now
+                    reminderOverrideForSession = false
                     Notifier.cancelRing(ctx)
                     dirty = true
                 }
@@ -202,6 +220,7 @@ object TimerCore {
         o.put("endAt", endAt)
         o.put("phaseStartedAt", phaseStartedAt)
         o.put("lastPingAt", lastPingAt)
+        o.put("reminderOverrideForSession", reminderOverrideForSession)
         Store.saveTimerState(o.toString())
     }
 
@@ -222,6 +241,8 @@ object TimerCore {
             endAt = o.optLong("endAt")
             phaseStartedAt = o.optLong("phaseStartedAt")
             lastPingAt = o.optLong("lastPingAt")
+            reminderOverrideForSession =
+                o.optBoolean("reminderOverrideForSession", false)
         }
         if (phase == Phase.IDLE && lastPingAt == 0L) {
             lastPingAt = System.currentTimeMillis()
