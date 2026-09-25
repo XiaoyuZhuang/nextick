@@ -96,4 +96,16 @@
     <string name="delete_session_title">Delete this record?</string>
     <string name="delete_session_message">%1$s · %2$s · %3$s\nIts time and points will also be removed from that day’s statistics.</string>
     <string name="delete_session_confirm">Delete</string>
+    <string name="points_total">Total accumulated points</string>
+    <string name="points_vs_yesterday_up">%1$s higher than yesterday</string>
+    <string name="points_vs_yesterday_down">%1$s lower than yesterday</string>
+    <string name="points_vs_yesterday_same">Same as yesterday</string>
+    <string name="reminder_active_window">Active hours</string>
+    <string name="reminder_active_window_desc">Daily reminder window; same start/end means all day</string>
+    <string name="reminder_inactive_title">Reminders are not active</string>
+    <string name="reminder_inactive_master">The reminder master switch is off. Turn it on before starting this countdown?</string>
+    <string name="reminder_inactive_window">It is outside your daily active hours. Enable reminders temporarily for this countdown?</string>
+    <string name="reminder_inactive_both">The reminder switch is off and it is outside the active hours. Turn reminders on and enable them temporarily for this countdown?</string>
+    <string name="enable_reminder_and_continue">Enable reminders</string>
+    <string name="start_without_reminder">Start silently</string>
 </resources>
