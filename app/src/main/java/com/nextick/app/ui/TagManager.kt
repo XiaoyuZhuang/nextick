@@ -20,6 +20,8 @@ import com.nextick.app.data.TagNames
 import java.util.UUID
 
 object TagManager {
+    private const val MAX_TAGS = 24
+
     private class Row(
         val source: Tag?,
         val swatch: android.view.View,
@@ -154,7 +156,8 @@ object TagManager {
         ).apply {
             text = ctx.getString(R.string.add_tag)
             setOnClickListener {
-                if (rows.size >= TAG_PALETTE.size) {
+                val maxTags = minOf(MAX_TAGS, TAG_PALETTE.size - 1)
+                if (rows.size >= maxTags) {
                     Notifier.warning(ctx)
                     return@setOnClickListener
                 }
