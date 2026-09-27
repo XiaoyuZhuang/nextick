@@ -96,7 +96,7 @@
     <string name="delete_session_title">删除这条记录？</string>
     <string name="delete_session_message">%1$s · %2$s · %3$s\n对应的时间和积分也会从这一天的统计中删除。</string>
     <string name="delete_session_confirm">删除</string>
-    <string name="points_total">总累计积分</string>
+    <string name="points_total">总累计积分</string>\n    <string name="points_selected_day">当天累计积分</string>
     <string name="points_vs_yesterday_up">比昨天高 %1$s</string>
     <string name="points_vs_yesterday_down">比昨天低 %1$s</string>
     <string name="points_vs_yesterday_same">与昨天持平</string>
