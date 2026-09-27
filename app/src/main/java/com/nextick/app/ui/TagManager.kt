@@ -20,6 +20,8 @@ import com.nextick.app.data.TagNames
 import java.util.UUID
 
 object TagManager {
+    private const val MAX_TAGS = 24
+
     private class Row(
         val source: Tag?,
         val swatch: android.view.View,
@@ -39,7 +41,29 @@ object TagManager {
             row.swatch.background = circle(TAG_PALETTE[row.colorIndex])
         }
 
-        fun addRow(source: Tag?, index: Int) {
+        fun firstUnusedColorIndex(): Int? {
+            val used = rows.asSequence()
+                .map { it.colorIndex }
+                .toHashSet()
+
+            return TAG_PALETTE.indices.firstOrNull { it !in used }
+        }
+
+        fun nextUnusedColorIndex(row: Row): Int? {
+            val usedByOthers = rows.asSequence()
+                .filter { it !== row }
+                .map { it.colorIndex }
+                .toHashSet()
+
+            for (offset in 1 until TAG_PALETTE.size) {
+                val candidate = (row.colorIndex + offset) % TAG_PALETTE.size
+                if (candidate !in usedByOthers) return candidate
+            }
+
+            return null
+        }
+
+        fun addRow(source: Tag?) {
             val rowLayout = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -47,10 +71,15 @@ object TagManager {
             }
 
             val swatch = android.view.View(ctx)
-            val colorIndex =
+            val savedColorIndex =
                 source?.let { tag ->
-                    TAG_PALETTE.indexOfFirst { it == tag.color }
-                }?.takeIf { it >= 0 } ?: (index % TAG_PALETTE.size)
+                    TAG_PALETTE.indexOfFirst { color -> color == tag.color }
+                } ?: -1
+
+            val colorIndex =
+                savedColorIndex.takeIf { candidate ->
+                    candidate >= 0 && rows.none { it.colorIndex == candidate }
+                } ?: firstUnusedColorIndex() ?: 0
 
             val name = EditText(ctx).apply {
                 hint = ctx.getString(R.string.tag_name_hint)
@@ -78,8 +107,14 @@ object TagManager {
             paint(row)
 
             swatch.setOnClickListener {
+                val nextColorIndex = nextUnusedColorIndex(row)
+                if (nextColorIndex == null) {
+                    Notifier.warning(ctx)
+                    return@setOnClickListener
+                }
+
                 Notifier.tap(ctx)
-                row.colorIndex = (row.colorIndex + 1) % TAG_PALETTE.size
+                row.colorIndex = nextColorIndex
                 paint(row)
             }
 
@@ -110,8 +145,8 @@ object TagManager {
             rows.add(row)
         }
 
-        Store.tags().forEachIndexed { index, tag ->
-            addRow(tag, index)
+        Store.tags().forEach { tag ->
+            addRow(tag)
         }
 
         val addButton = MaterialButton(
@@ -121,12 +156,13 @@ object TagManager {
         ).apply {
             text = ctx.getString(R.string.add_tag)
             setOnClickListener {
-                if (rows.size >= 12) {
+                val maxTags = minOf(MAX_TAGS, TAG_PALETTE.size - 1)
+                if (rows.size >= maxTags) {
                     Notifier.warning(ctx)
                     return@setOnClickListener
                 }
                 Notifier.confirm(ctx)
-                addRow(null, rows.size)
+                addRow(null)
             }
         }
 
