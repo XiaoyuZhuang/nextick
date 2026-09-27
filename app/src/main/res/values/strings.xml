@@ -96,7 +96,7 @@
     <string name="delete_session_title">Delete this record?</string>
     <string name="delete_session_message">%1$s · %2$s · %3$s\nIts time and points will also be removed from that day’s statistics.</string>
     <string name="delete_session_confirm">Delete</string>
-    <string name="points_total">Total accumulated points</string>
+    <string name="points_total">Total points</string>\n    <string name="points_selected_day">Day points</string>
     <string name="points_vs_yesterday_up">%1$s higher than yesterday</string>
     <string name="points_vs_yesterday_down">%1$s lower than yesterday</string>
     <string name="points_vs_yesterday_same">Same as yesterday</string>
